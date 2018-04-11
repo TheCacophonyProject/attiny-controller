@@ -1,0 +1,12 @@
+
+[Unit]
+Description=Cacophony Project ATtiny controller
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/attiny-controller
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
