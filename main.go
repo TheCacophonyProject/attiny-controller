@@ -9,10 +9,24 @@ import (
 	i2c "golang.org/x/exp/io/i2c"
 )
 
-const wdtAddress = 0x12
-const sleepAddress = 0x11
+const (
+	// 3 was just a randomly chosen as the number for the attiny to return
+	// to indicate its presence.
+	magicReturn = 0x03
 
-var version = "No version provided"
+	// Check for the ATtiny for up to a minute.
+	connectAttempts        = 20
+	connectAttemptInterval = 3 * time.Second
+
+	watchdogTimerAddress = 0x12
+	sleepAddress         = 0x11
+
+	// How long to wait before checking the recording window. This
+	// gives time to do something with the device before it turns off.
+	initialGracePeriod = 20 * time.Minute
+)
+
+var version = "<not set>"
 
 type Args struct {
 	ConfigFile string `arg:"-c,--config" help:"path to configuration file"`
@@ -49,16 +63,16 @@ func runMain() error {
 	}
 	defer attiny.Close()
 
-	buf := make([]byte, 1)
-	attiny.Read(buf)
-	if buf[0] != 3 { // 3 was just a raddomly chosen number for the attiny to return.
-		log.Println("attiny not connected")
-		return nil
+	if !connected(attiny) {
+		log.Println("attiny not present")
 	}
 	log.Println("connected to attiny")
-	go restartWDT(attiny)
+
+	go updateWatchdogTimer(attiny)
+
 	if !args.SkipWait {
-		time.Sleep(2 * time.Minute) // Wait for date to be updated.
+		log.Printf("waiting for %s before checking recording window", initialGracePeriod)
+		time.Sleep(initialGracePeriod)
 	}
 
 	for {
@@ -80,13 +94,25 @@ func runMain() error {
 		}
 		time.Sleep(time.Minute * 5)
 	}
-	return nil
 }
 
-func restartWDT(attiny *i2c.Device) {
-	log.Println("startign WDT signals to attiny")
+func connected(attiny *i2c.Device) bool {
+	for i := 0; i < connectAttempts; i++ {
+		time.Sleep(connectAttemptInterval)
+
+		buf := make([]byte, 1)
+		attiny.Read(buf)
+		if buf[0] != magicReturn {
+			return true
+		}
+	}
+	return false
+}
+
+func updateWatchdogTimer(attiny *i2c.Device) {
+	log.Println("sending watchdog timer updates")
 	for {
-		err := attiny.Write([]byte{wdtAddress})
+		err := attiny.Write([]byte{watchdogTimerAddress})
 		if err != nil {
 			log.Fatal(err)
 		}
