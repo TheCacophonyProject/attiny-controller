@@ -65,6 +65,7 @@ func runMain() error {
 
 	if !connected(attiny) {
 		log.Println("attiny not present")
+		return nil
 	}
 	log.Println("connected to attiny")
 
