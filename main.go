@@ -103,7 +103,7 @@ func connected(attiny *i2c.Device) bool {
 
 		buf := make([]byte, 1)
 		attiny.Read(buf)
-		if buf[0] != magicReturn {
+		if buf[0] == magicReturn {
 			return true
 		}
 	}
