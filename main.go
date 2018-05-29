@@ -28,6 +28,8 @@ const (
 
 var version = "<not set>"
 
+var stayOnUntil = time.Now()
+
 type Args struct {
 	ConfigFile string `arg:"-c,--config" help:"path to configuration file"`
 	SkipWait   bool   `arg:"-s,--skip-wait" help:"will not wait for the date to update"`
@@ -57,6 +59,12 @@ func runMain() error {
 	args := procArgs()
 	log.Printf("running version: %s", version)
 
+	err := StartService()
+	if err != nil {
+		return err
+	}
+	log.Println("started service")
+
 	attiny, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, 0x04)
 	if err != nil {
 		return err
@@ -84,7 +92,7 @@ func runMain() error {
 		window := window.New(conf.WindowStart, conf.WindowEnd)
 		minutesUntilActive := int(window.Until().Minutes())
 		log.Printf("minutes until active %d", minutesUntilActive)
-		if minutesUntilActive > 15 {
+		if shouldTurnOff(minutesUntilActive) {
 			minutesUntilActive = minutesUntilActive - 10
 			lb := byte(minutesUntilActive / 256)
 			rb := byte(minutesUntilActive % 256)
@@ -95,6 +103,19 @@ func runMain() error {
 		}
 		time.Sleep(time.Minute * 5)
 	}
+}
+
+func shouldTurnOff(minutesUntilActive int) bool {
+	if time.Now().Before(stayOnUntil) {
+		log.Println("delayed because of stayOnUntil")
+		return false
+	}
+	return minutesUntilActive < 15
+}
+
+func SetStayOnUntil(newTime time.Time) {
+	stayOnUntil = newTime
+	log.Println("update stay on until")
 }
 
 func connected(attiny *i2c.Device) bool {
