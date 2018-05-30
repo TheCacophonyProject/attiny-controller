@@ -110,7 +110,7 @@ func shouldTurnOff(minutesUntilActive int) bool {
 		log.Println("delayed because of stayOnUntil")
 		return false
 	}
-	return minutesUntilActive < 15
+	return minutesUntilActive > 15
 }
 
 func SetStayOnUntil(newTime time.Time) {
