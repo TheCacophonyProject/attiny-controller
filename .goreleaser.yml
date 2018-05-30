@@ -20,7 +20,7 @@ builds:
 nfpm:
   vendor: The Cacophony Project
   homepage: http://cacophony.org.nz/
-  maintainer: Menno Finlay-Smits <menno@cacophony.org.nz>
+  maintainer: Cameron Ryan-Pears <cameron@cacophony.org.nz>
   description: Controls the ATtiny on the Pi Hat
   license: GPL v3.0
   name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Arch }}"
@@ -28,7 +28,7 @@ nfpm:
     - deb
   bindir: /usr/bin
   files:
-    "attiny-controller.service": "/etc/systemd/system/attiny-controller.service"
+    "_release/attiny-controller.service": "/etc/systemd/system/attiny-controller.service"
 
 
 checksum:
