@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/TheCacophonyProject/window"
@@ -27,6 +29,8 @@ const (
 )
 
 var version = "<not set>"
+
+var mutex = &sync.Mutex{}
 
 var stayOnUntil = time.Now()
 
@@ -106,16 +110,25 @@ func runMain() error {
 }
 
 func shouldTurnOff(minutesUntilActive int) bool {
-	if time.Now().Before(stayOnUntil) {
-		log.Println("delayed because of stayOnUntil")
+	mutex.Lock()
+	stayOnNow := time.Now().Before(stayOnUntil)
+	mutex.Unlock()
+	if stayOnNow {
 		return false
 	}
 	return minutesUntilActive > 15
 }
 
-func SetStayOnUntil(newTime time.Time) {
+// SetStayOnUntil will not trigger the pi to turn off through the attiny until the given time
+func SetStayOnUntil(newTime time.Time) error {
+	if newTime.After(time.Now().Add(time.Duration(12) * time.Hour)) {
+		return errors.New("can not delay over 12 hours")
+	}
+	mutex.Lock()
 	stayOnUntil = newTime
-	log.Println("update stay on until")
+	mutex.Unlock()
+	log.Println("staying on until", newTime.Format(time.UnixDate))
+	return nil
 }
 
 func connected(attiny *i2c.Device) bool {

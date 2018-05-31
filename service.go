@@ -47,6 +47,12 @@ func genIntrospectable(v interface{}) introspect.Introspectable {
 
 // StayOnFor will delay turning off the raspberry pi for m minutes.
 func (s service) StayOnFor(m int) *dbus.Error {
-	SetStayOnUntil(time.Now().Add(time.Duration(m) * time.Minute))
+	err := SetStayOnUntil(time.Now().Add(time.Duration(m) * time.Minute))
+	if err != nil {
+		return &dbus.Error{
+			Name: dbusName + ".StayOnForError",
+			Body: []interface{}{err.Error()},
+		}
+	}
 	return nil
 }
