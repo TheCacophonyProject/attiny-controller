@@ -97,7 +97,7 @@ func runMain() error {
 		minutesUntilActive := int(window.Until().Minutes())
 		log.Printf("minutes until active %d", minutesUntilActive)
 		if shouldTurnOff(minutesUntilActive) {
-			minutesUntilActive = minutesUntilActive - 10
+			minutesUntilActive = minutesUntilActive - 2
 			lb := byte(minutesUntilActive / 256)
 			rb := byte(minutesUntilActive % 256)
 			err = attiny.Write([]byte{sleepAddress, lb, rb})

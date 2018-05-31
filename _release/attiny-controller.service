@@ -5,8 +5,9 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/attiny-controller
+ExecStart=/usr/bin/attiny-controller
 Restart=on-failure
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
