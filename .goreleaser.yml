@@ -29,7 +29,7 @@ nfpm:
   bindir: /usr/bin
   files:
     "_release/attiny-controller.service": "/etc/systemd/system/attiny-controller.service"
-
+    "_release/org.cacophony.Attiny.conf": "/etc/dbus-1/system.d/org.cacophony.Attiny.conf"
 
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
