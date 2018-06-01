@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	dbusName = "org.cacophony.Attiny"
-	dbusPath = "/org/cacophony/Attiny"
+	dbusName = "org.cacophony.ATtiny"
+	dbusPath = "/org/cacophony/ATtiny"
 )
 
 type service struct{}

@@ -4,4 +4,4 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-dbus-send --system --type=method_call --print-reply --dest=org.cacophony.Attiny /org/cacophony/Attiny org.cacophony.Attiny.StayOnFor int64:$1
+dbus-send --system --type=method_call --print-reply --dest=org.cacophony.ATtiny /org/cacophony/ATtiny org.cacophony.ATtiny.StayOnFor int64:$1

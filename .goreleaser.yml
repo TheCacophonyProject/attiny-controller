@@ -29,7 +29,7 @@ nfpm:
   bindir: /usr/bin
   files:
     "_release/attiny-controller.service": "/etc/systemd/system/attiny-controller.service"
-    "_release/org.cacophony.Attiny.conf": "/etc/dbus-1/system.d/org.cacophony.Attiny.conf"
+    "_release/org.cacophony.ATtiny.conf": "/etc/dbus-1/system.d/org.cacophony.ATtiny.conf"
     "_release/stay-on-for": "/usr/bin/stay-on-for"
 
 checksum:

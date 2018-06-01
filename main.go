@@ -30,7 +30,7 @@ const (
 
 var version = "<not set>"
 
-var mutex = &sync.Mutex{}
+var mu sync.Mutex // Protecting stayOnUntil
 
 var stayOnUntil = time.Now()
 
@@ -110,10 +110,9 @@ func runMain() error {
 }
 
 func shouldTurnOff(minutesUntilActive int) bool {
-	mutex.Lock()
-	stayOnNow := time.Now().Before(stayOnUntil)
-	mutex.Unlock()
-	if stayOnNow {
+	mu.Lock()
+	defer mu.Unlock()
+	if time.Now().Before(stayOnUntil) {
 		return false
 	}
 	return minutesUntilActive > 15
@@ -121,12 +120,12 @@ func shouldTurnOff(minutesUntilActive int) bool {
 
 // SetStayOnUntil will not trigger the pi to turn off through the attiny until the given time
 func SetStayOnUntil(newTime time.Time) error {
-	if newTime.After(time.Now().Add(time.Duration(12) * time.Hour)) {
+	if time.Until(newTime) > 12*time.Hour {
 		return errors.New("can not delay over 12 hours")
 	}
-	mutex.Lock()
+	mu.Lock()
 	stayOnUntil = newTime
-	mutex.Unlock()
+	mu.Unlock()
 	log.Println("staying on until", newTime.Format(time.UnixDate))
 	return nil
 }
