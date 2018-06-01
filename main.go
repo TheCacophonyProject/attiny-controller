@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/TheCacophonyProject/window"
@@ -27,6 +29,10 @@ const (
 )
 
 var version = "<not set>"
+
+var mu sync.Mutex // Protecting stayOnUntil
+
+var stayOnUntil = time.Now()
 
 type Args struct {
 	ConfigFile string `arg:"-c,--config" help:"path to configuration file"`
@@ -57,6 +63,12 @@ func runMain() error {
 	args := procArgs()
 	log.Printf("running version: %s", version)
 
+	err := StartService()
+	if err != nil {
+		return err
+	}
+	log.Println("started service")
+
 	attiny, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, 0x04)
 	if err != nil {
 		return err
@@ -84,7 +96,7 @@ func runMain() error {
 		window := window.New(conf.WindowStart, conf.WindowEnd)
 		minutesUntilActive := int(window.Until().Minutes())
 		log.Printf("minutes until active %d", minutesUntilActive)
-		if minutesUntilActive > 15 {
+		if shouldTurnOff(minutesUntilActive) {
 			minutesUntilActive = minutesUntilActive - 2
 			lb := byte(minutesUntilActive / 256)
 			rb := byte(minutesUntilActive % 256)
@@ -95,6 +107,27 @@ func runMain() error {
 		}
 		time.Sleep(time.Minute * 5)
 	}
+}
+
+func shouldTurnOff(minutesUntilActive int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	if time.Now().Before(stayOnUntil) {
+		return false
+	}
+	return minutesUntilActive > 15
+}
+
+// SetStayOnUntil will not trigger the pi to turn off through the attiny until the given time
+func SetStayOnUntil(newTime time.Time) error {
+	if time.Until(newTime) > 12*time.Hour {
+		return errors.New("can not delay over 12 hours")
+	}
+	mu.Lock()
+	stayOnUntil = newTime
+	mu.Unlock()
+	log.Println("staying on until", newTime.Format(time.UnixDate))
+	return nil
 }
 
 func connected(attiny *i2c.Device) bool {

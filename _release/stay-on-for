@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ $# -ne 1 ]; then
+    echo "Requires 1 argument. Time in minutes to stay on for."
+    exit 1
+fi
+
+dbus-send --system --type=method_call --print-reply --dest=org.cacophony.ATtiny /org/cacophony/ATtiny org.cacophony.ATtiny.StayOnFor int64:$1
