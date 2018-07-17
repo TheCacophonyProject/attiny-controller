@@ -45,7 +45,7 @@ func (Args) Version() string {
 
 func procArgs() Args {
 	var args Args
-	args.ConfigFile = "/etc/thermal-recorder.yaml"
+	args.ConfigFile = "/etc/cacophony-attiny.yaml"
 	arg.MustParse(&args)
 	return args
 }
@@ -88,22 +88,26 @@ func runMain() error {
 		time.Sleep(initialGracePeriod)
 	}
 
+	var lastloggedError string = ""
+
 	for {
-		conf, err := ParseConfigFile(args.ConfigFile)
-		if err != nil {
-			return err
-		}
-		window := window.New(conf.WindowStart, conf.WindowEnd)
-		minutesUntilActive := int(window.Until().Minutes())
-		log.Printf("minutes until active %d", minutesUntilActive)
-		if shouldTurnOff(minutesUntilActive) {
-			minutesUntilActive = minutesUntilActive - 2
-			lb := byte(minutesUntilActive / 256)
-			rb := byte(minutesUntilActive % 256)
-			err = attiny.Write([]byte{sleepAddress, lb, rb})
-			if err != nil {
-				log.Fatal(err)
+		conf, err := ParseAttinyConfigFile(args.ConfigFile)
+		if err == nil {
+			window := window.New(conf.PiWakeUpTime, conf.PiSleepTime)
+			minutesUntilActive := int(window.Until().Minutes())
+			log.Printf("minutes until active %d", minutesUntilActive)
+			if shouldTurnOff(minutesUntilActive) {
+				minutesUntilActive = minutesUntilActive - 2
+				lb := byte(minutesUntilActive / 256)
+				rb := byte(minutesUntilActive % 256)
+				err = attiny.Write([]byte{sleepAddress, lb, rb})
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
+		} else if lastloggedError != err.Error() {
+			lastloggedError = err.Error()
+			log.Printf("attiny-config error: %s", err.Error())
 		}
 		time.Sleep(time.Minute * 5)
 	}
