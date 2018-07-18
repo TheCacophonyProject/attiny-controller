@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"runtime"
 	"sync"
 	"time"
 
@@ -45,7 +46,7 @@ func (Args) Version() string {
 
 func procArgs() Args {
 	var args Args
-	args.ConfigFile = "/etc/cacophony-attiny.yaml"
+	args.ConfigFile = "/etc/cacophony/attiny.yaml"
 	arg.MustParse(&args)
 	return args
 }
@@ -73,8 +74,8 @@ func runMain() error {
 	if err != nil {
 		return err
 	}
-	defer attiny.Close()
 
+	log.Println("connecting to attiny")
 	if !connected(attiny) {
 		log.Println("attiny not present")
 		return nil
@@ -83,31 +84,39 @@ func runMain() error {
 
 	go updateWatchdogTimer(attiny)
 
+	conf, err := ParseAttinyConfigFile(args.ConfigFile)
+	if err != nil {
+		log.Printf("failed to read config: %v", err)
+		log.Printf("pinging watchdog only")
+		runtime.Goexit()
+	}
+	log.Printf("on window: %02d:%02d to %02d:%02d",
+		conf.PiWakeTime.Hour(), conf.PiWakeTime.Minute(),
+		conf.PiSleepTime.Hour(), conf.PiSleepTime.Minute())
+
+	if conf.PiWakeTime.Equal(conf.PiSleepTime) {
+		log.Printf("no window active so pinging watchdog only")
+		runtime.Goexit()
+	}
+
 	if !args.SkipWait {
-		log.Printf("waiting for %s before checking recording window", initialGracePeriod)
+		log.Printf("waiting for %s before applying recording window", initialGracePeriod)
 		time.Sleep(initialGracePeriod)
 	}
 
-	var lastloggedError string = ""
-
 	for {
-		conf, err := ParseAttinyConfigFile(args.ConfigFile)
-		if err == nil {
-			window := window.New(conf.PiWakeUpTime, conf.PiSleepTime)
-			minutesUntilActive := int(window.Until().Minutes())
-			log.Printf("minutes until active %d", minutesUntilActive)
-			if shouldTurnOff(minutesUntilActive) {
-				minutesUntilActive = minutesUntilActive - 2
-				lb := byte(minutesUntilActive / 256)
-				rb := byte(minutesUntilActive % 256)
-				err = attiny.Write([]byte{sleepAddress, lb, rb})
-				if err != nil {
-					log.Fatal(err)
-				}
+		window := window.New(conf.PiWakeTime, conf.PiSleepTime)
+		minutesUntilActive := int(window.Until().Minutes())
+		log.Printf("minutes until active %d", minutesUntilActive)
+		if shouldTurnOff(minutesUntilActive) {
+			log.Println("shutting down...")
+			minutesUntilActive = minutesUntilActive - 2
+			lb := byte(minutesUntilActive / 256)
+			rb := byte(minutesUntilActive % 256)
+			err = attiny.Write([]byte{sleepAddress, lb, rb})
+			if err != nil {
+				log.Fatal(err)
 			}
-		} else if lastloggedError != err.Error() {
-			lastloggedError = err.Error()
-			log.Printf("attiny-config error: %s", err.Error())
 		}
 		time.Sleep(time.Minute * 5)
 	}

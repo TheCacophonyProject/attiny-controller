@@ -1,4 +1,4 @@
-// Copyright 2017 The Cacophony Project. All rights reserved.
+// Copyright 2018 The Cacophony Project. All rights reserved.
 // Use of this source code is governed by the Apache License Version 2.0;
 // see the LICENSE file for further details.
 
@@ -13,22 +13,22 @@ import (
 )
 
 type AttinyConfig struct {
-	PiWakeUpTime time.Time
-	PiSleepTime  time.Time
+	PiWakeTime  time.Time
+	PiSleepTime time.Time
 }
 
 func (conf *AttinyConfig) Validate() error {
-	if conf.PiSleepTime.IsZero() && !conf.PiWakeUpTime.IsZero() {
-		return errors.New("pi-sleep-time is set but pi-wake-up-time isn't")
+	if conf.PiSleepTime.IsZero() && !conf.PiWakeTime.IsZero() {
+		return errors.New("pi-sleep-time is set but pi-wake-time isn't")
 	}
-	if !conf.PiSleepTime.IsZero() && conf.PiWakeUpTime.IsZero() {
-		return errors.New("pi-wake-up-time is set but pi-sleep-time isn't")
+	if !conf.PiSleepTime.IsZero() && conf.PiWakeTime.IsZero() {
+		return errors.New("pi-wake-time is set but pi-sleep-time isn't")
 	}
 	return nil
 }
 
 type rawConfig struct {
-	PiWakeUp string `yaml:"pi-wake-up-time"`
+	PiWakeUp string `yaml:"pi-wake-time"`
 	PiSleep  string `yaml:"pi-sleep-time"`
 }
 
@@ -54,7 +54,7 @@ func ParseAttinyConfig(buf []byte) (*AttinyConfig, error) {
 		if err != nil {
 			return nil, errors.New("invalid Pi wake up time")
 		}
-		conf.PiWakeUpTime = t
+		conf.PiWakeTime = t
 	}
 
 	if raw.PiSleep != "" {
