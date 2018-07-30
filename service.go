@@ -13,10 +13,11 @@ const (
 	dbusPath = "/org/cacophony/ATtiny"
 )
 
-type service struct{}
+type service struct {
+	attinyPresent bool
+}
 
-// StartService starts attiny controller dbus service
-func StartService() error {
+func startService(attinyPresent bool) error {
 	conn, err := dbus.SystemBus()
 	if err != nil {
 		return err
@@ -29,7 +30,9 @@ func StartService() error {
 		return errors.New("name already taken")
 	}
 
-	s := &service{}
+	s := &service{
+		attinyPresent: attinyPresent,
+	}
 	conn.Export(s, dbusPath, dbusName)
 	conn.Export(genIntrospectable(s), dbusPath, "org.freedesktop.DBus.Introspectable")
 	return nil
@@ -45,9 +48,14 @@ func genIntrospectable(v interface{}) introspect.Introspectable {
 	return introspect.NewIntrospectable(node)
 }
 
+// IsPresent returns whether or not an ATtiny was detected.
+func (s service) IsPresent() (bool, *dbus.Error) {
+	return s.attinyPresent, nil
+}
+
 // StayOnFor will delay turning off the raspberry pi for m minutes.
 func (s service) StayOnFor(m int) *dbus.Error {
-	err := SetStayOnUntil(time.Now().Add(time.Duration(m) * time.Minute))
+	err := setStayOnUntil(time.Now().Add(time.Duration(m) * time.Minute))
 	if err != nil {
 		return &dbus.Error{
 			Name: dbusName + ".StayOnForError",

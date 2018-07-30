@@ -29,11 +29,32 @@ const (
 	initialGracePeriod = 20 * time.Minute
 )
 
-var version = "<not set>"
+var (
+	version = "<not set>"
 
-var mu sync.Mutex // Protecting stayOnUntil
+	mu          sync.Mutex
+	stayOnUntil = time.Now()
+)
 
-var stayOnUntil = time.Now()
+func shouldTurnOff(minutesUntilActive int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	if time.Now().Before(stayOnUntil) {
+		return false
+	}
+	return minutesUntilActive > 15
+}
+
+func setStayOnUntil(newTime time.Time) error {
+	if time.Until(newTime) > 12*time.Hour {
+		return errors.New("can not delay over 12 hours")
+	}
+	mu.Lock()
+	stayOnUntil = newTime
+	mu.Unlock()
+	log.Println("staying on until", newTime.Format(time.UnixDate))
+	return nil
+}
 
 type Args struct {
 	ConfigFile string `arg:"-c,--config" help:"path to configuration file"`
@@ -56,6 +77,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// If no error then keep the background goroutines running.
+	runtime.Goexit()
 }
 
 func runMain() error {
@@ -64,19 +87,21 @@ func runMain() error {
 	args := procArgs()
 	log.Printf("running version: %s", version)
 
-	err := StartService()
-	if err != nil {
-		return err
-	}
-	log.Println("started service")
-
 	attiny, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, 0x04)
 	if err != nil {
 		return err
 	}
 
 	log.Println("connecting to attiny")
-	if !connected(attiny) {
+	attinyPresent := connected(attiny)
+
+	log.Println("starting DBUS service")
+	if err := startService(attinyPresent); err != nil {
+		return err
+	}
+	log.Println("started DBUS service")
+
+	if !attinyPresent {
 		log.Println("attiny not present")
 		return nil
 	}
@@ -88,7 +113,7 @@ func runMain() error {
 	if err != nil {
 		log.Printf("failed to read config: %v", err)
 		log.Printf("pinging watchdog only")
-		runtime.Goexit()
+		return nil
 	}
 	log.Printf("on window: %02d:%02d to %02d:%02d",
 		conf.PiWakeTime.Hour(), conf.PiWakeTime.Minute(),
@@ -120,27 +145,6 @@ func runMain() error {
 		}
 		time.Sleep(time.Minute * 5)
 	}
-}
-
-func shouldTurnOff(minutesUntilActive int) bool {
-	mu.Lock()
-	defer mu.Unlock()
-	if time.Now().Before(stayOnUntil) {
-		return false
-	}
-	return minutesUntilActive > 15
-}
-
-// SetStayOnUntil will not trigger the pi to turn off through the attiny until the given time
-func SetStayOnUntil(newTime time.Time) error {
-	if time.Until(newTime) > 12*time.Hour {
-		return errors.New("can not delay over 12 hours")
-	}
-	mu.Lock()
-	stayOnUntil = newTime
-	mu.Unlock()
-	log.Println("staying on until", newTime.Format(time.UnixDate))
-	return nil
 }
 
 func connected(attiny *i2c.Device) bool {
