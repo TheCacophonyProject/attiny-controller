@@ -29,6 +29,12 @@
   version = "v4.1.0"
 
 [[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "d99a578cf41bfccdeaf48b0845c823a4b8b0ad5e"
+
+[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
@@ -44,7 +50,6 @@
     "conn/gpio/gpiostream",
     "conn/i2c",
     "conn/i2c/i2creg",
-    "conn/mmr",
     "conn/physic",
     "conn/pin",
     "conn/pin/pinreg",
@@ -74,6 +79,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4380616fb655c205a3326ae069984c9c2e772cd7a8b9d1a38e45597afbd46ebe"
+  inputs-digest = "2020a61251f8d9cd5c0bee3b7b22ad1d8c426cf9eaf013cd7a2bfeac7da4bf17"
   solver-name = "gps-cdcl"
   solver-version = 1

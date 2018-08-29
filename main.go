@@ -22,12 +22,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os/exec"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/TheCacophonyProject/window"
 	arg "github.com/alexflint/go-arg"
+	"golang.org/x/sys/unix"
 )
 
 // How long to wait before checking the recording window. This
@@ -62,9 +64,10 @@ func setStayOnUntil(newTime time.Time) error {
 }
 
 type Args struct {
-	ConfigFile string `arg:"-c,--config" help:"path to configuration file"`
-	SkipWait   bool   `arg:"-s,--skip-wait" help:"will not wait for the date to update"`
-	Timestamps bool   `arg:"-t,--timestamps" help:"include timestamps in log output"`
+	ConfigFile         string `arg:"-c,--config" help:"path to configuration file"`
+	SkipWait           bool   `arg:"-s,--skip-wait" help:"will not wait for the date to update"`
+	Timestamps         bool   `arg:"-t,--timestamps" help:"include timestamps in log output"`
+	SkipSystemShutdown bool   `arg:"--skip-system-shutdown" help:"don't shut down operating system when powering down"`
 }
 
 func (Args) Version() string {
@@ -142,9 +145,20 @@ func runMain() error {
 		minutesUntilActive := int(window.Until().Minutes())
 		log.Printf("minutes until active %d", minutesUntilActive)
 		if shouldTurnOff(minutesUntilActive) {
-			log.Println("shutting down...")
+			log.Println("syncing filesystems...")
+			unix.Sync()
+
+			log.Println("requesting power off...")
 			if err := attiny.PowerOff(minutesUntilActive - 2); err != nil {
 				log.Fatal(err)
+			}
+			log.Println("power off requested")
+
+			if !args.SkipSystemShutdown {
+				log.Println("shutting down system...")
+				if err := shutdown(); err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
 		time.Sleep(time.Minute * 5)
@@ -159,4 +173,13 @@ func updateWatchdogTimer(a *attiny) {
 		}
 		time.Sleep(time.Minute)
 	}
+}
+
+func shutdown() error {
+	cmd := exec.Command("/sbin/poweroff")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("poweroff failed: %v\n%s", err, output)
+	}
+	return nil
 }
