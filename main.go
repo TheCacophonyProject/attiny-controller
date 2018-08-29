@@ -1,3 +1,21 @@
+/*
+attiny-controller - Communicates with ATtiny microcontroller
+Copyright (C) 2018, The Cacophony Project
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package main
 
 import (
@@ -9,25 +27,11 @@ import (
 
 	"github.com/TheCacophonyProject/window"
 	arg "github.com/alexflint/go-arg"
-	i2c "golang.org/x/exp/io/i2c"
 )
 
-const (
-	// 3 was just a randomly chosen as the number for the attiny to return
-	// to indicate its presence.
-	magicReturn = 0x03
-
-	// Check for the ATtiny for up to a minute.
-	connectAttempts        = 20
-	connectAttemptInterval = 3 * time.Second
-
-	watchdogTimerAddress = 0x12
-	sleepAddress         = 0x11
-
-	// How long to wait before checking the recording window. This
-	// gives time to do something with the device before it turns off.
-	initialGracePeriod = 20 * time.Minute
-)
+// How long to wait before checking the recording window. This
+// gives time to do something with the device before it turns off.
+const initialGracePeriod = 20 * time.Minute
 
 var (
 	version = "<not set>"
@@ -87,19 +91,18 @@ func runMain() error {
 	args := procArgs()
 	log.Printf("running version: %s", version)
 
-	attiny, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, 0x04)
+	log.Println("connecting to attiny")
+	attiny, err := connectATtiny()
 	if err != nil {
 		return err
 	}
+	attinyPresent := attiny != nil
 
-	log.Println("connecting to attiny")
-	attinyPresent := connected(attiny)
-
-	log.Println("starting DBUS service")
+	log.Println("starting D-Bus service")
 	if err := startService(attinyPresent); err != nil {
 		return err
 	}
-	log.Println("started DBUS service")
+	log.Println("started D-Bus service")
 
 	if !attinyPresent {
 		log.Println("attiny not present")
@@ -135,11 +138,7 @@ func runMain() error {
 		log.Printf("minutes until active %d", minutesUntilActive)
 		if shouldTurnOff(minutesUntilActive) {
 			log.Println("shutting down...")
-			minutesUntilActive = minutesUntilActive - 2
-			lb := byte(minutesUntilActive / 256)
-			rb := byte(minutesUntilActive % 256)
-			err = attiny.Write([]byte{sleepAddress, lb, rb})
-			if err != nil {
+			if err := attiny.PowerOff(minutesUntilActive - 2); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -147,24 +146,10 @@ func runMain() error {
 	}
 }
 
-func connected(attiny *i2c.Device) bool {
-	for i := 0; i < connectAttempts; i++ {
-		time.Sleep(connectAttemptInterval)
-
-		buf := make([]byte, 1)
-		attiny.Read(buf)
-		if buf[0] == magicReturn {
-			return true
-		}
-	}
-	return false
-}
-
-func updateWatchdogTimer(attiny *i2c.Device) {
+func updateWatchdogTimer(a *attiny) {
 	log.Println("sending watchdog timer updates")
 	for {
-		err := attiny.Write([]byte{watchdogTimerAddress})
-		if err != nil {
+		if err := a.PingWatchdog(); err != nil {
 			log.Fatal(err)
 		}
 		time.Sleep(time.Minute)
