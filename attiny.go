@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"sync"
 	"time"
 
 	"golang.org/x/exp/io/i2c"
@@ -68,12 +69,15 @@ func detectATtiny(dev *i2c.Device) bool {
 }
 
 type attiny struct {
+	mu  sync.Mutex
 	dev *i2c.Device
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
 // minutes specified.
 func (a *attiny) PowerOff(minutes int) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	lb := byte(minutes / 256)
 	rb := byte(minutes % 256)
 	return a.dev.Write([]byte{sleepAddress, lb, rb})
@@ -82,5 +86,7 @@ func (a *attiny) PowerOff(minutes int) error {
 // PingWatchdog ping's the ATTiny's watchdog timer to prevent it from
 // rebooting the system.
 func (a *attiny) PingWatchdog() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	return a.dev.Write([]byte{watchdogTimerAddress})
 }
