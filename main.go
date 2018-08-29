@@ -20,6 +20,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"runtime"
 	"sync"
@@ -63,6 +64,7 @@ func setStayOnUntil(newTime time.Time) error {
 type Args struct {
 	ConfigFile string `arg:"-c,--config" help:"path to configuration file"`
 	SkipWait   bool   `arg:"-s,--skip-wait" help:"will not wait for the date to update"`
+	Timestamps bool   `arg:"-t,--timestamps" help:"include timestamps in log output"`
 }
 
 func (Args) Version() string {
@@ -86,9 +88,12 @@ func main() {
 }
 
 func runMain() error {
-	log.SetFlags(0) // Removes default timestamp flag
-
 	args := procArgs()
+
+	if !args.Timestamps {
+		log.SetFlags(0)
+	}
+
 	log.Printf("running version: %s", version)
 
 	log.Println("connecting to attiny")
