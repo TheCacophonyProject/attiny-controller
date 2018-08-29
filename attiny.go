@@ -22,71 +22,112 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/exp/io/i2c"
+	"periph.io/x/periph/conn/i2c"
+	"periph.io/x/periph/conn/i2c/i2creg"
+	"periph.io/x/periph/host"
 )
 
 const (
 	attinyAddress = 0x04
+
+	watchdogReg = 0x12
+	sleepReg    = 0x11
 
 	// 3 was just a randomly chosen as the number for the attiny to return
 	// to indicate its presence.
 	magicReturn = 0x03
 
 	// Check for the ATtiny for up to a minute.
-	connectAttempts        = 20
+	maxConnectAttempts     = 20
 	connectAttemptInterval = 3 * time.Second
 
-	watchdogTimerAddress = 0x12
-	sleepAddress         = 0x11
+	// Parameters for transaction retries.
+	maxTxAttempts   = 5
+	txRetryInterval = time.Second
 )
 
 // connectATtiny sets up a i2c device for talking to the ATtiny and
 // returns a wrapper for it. If no ATtiny was detected (nil, nil) will
 // be returned.
 func connectATtiny() (*attiny, error) {
-	dev, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, attinyAddress)
+	if _, err := host.Init(); err != nil {
+		return nil, err
+	}
+	bus, err := i2creg.Open("")
 	if err != nil {
 		return nil, err
 	}
+	dev := &i2c.Dev{Bus: bus, Addr: attinyAddress}
+
 	if !detectATtiny(dev) {
-		dev.Close()
+		bus.Close()
 		return nil, nil
 	}
 	return &attiny{dev: dev}, nil
 }
 
-func detectATtiny(dev *i2c.Device) bool {
-	for i := 0; i < connectAttempts; i++ {
-		time.Sleep(connectAttemptInterval)
-
-		buf := make([]byte, 1)
-		dev.Read(buf)
-		if buf[0] == magicReturn {
+func detectATtiny(dev *i2c.Dev) bool {
+	attempts := 0
+	for {
+		b := make([]byte, 1)
+		err := dev.Tx(nil, b)
+		if err == nil && b[0] == magicReturn {
 			return true
 		}
+
+		attempts++
+		if attempts >= maxConnectAttempts {
+			return false
+		}
+
+		time.Sleep(connectAttemptInterval)
 	}
-	return false
 }
 
 type attiny struct {
 	mu  sync.Mutex
-	dev *i2c.Device
+	dev *i2c.Dev
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
 // minutes specified.
 func (a *attiny) PowerOff(minutes int) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	if minutes <= 0 {
+		return nil
+	}
 	lb := byte(minutes / 256)
 	rb := byte(minutes % 256)
-	return a.dev.Write([]byte{sleepAddress, lb, rb})
+	return a.write(sleepReg, []byte{lb, rb})
 }
 
 // PingWatchdog ping's the ATTiny's watchdog timer to prevent it from
 // rebooting the system.
 func (a *attiny) PingWatchdog() error {
+	return a.write(watchdogReg, nil)
+}
+
+func (a *attiny) write(reg uint8, b []byte) error {
+	buf := make([]byte, 1, 1+len(b))
+	buf[0] = byte(reg)
+	buf = append(buf, b...)
+	return a.tx(nil, buf)
+}
+
+func (a *attiny) tx(w, r []byte) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.dev.Write([]byte{watchdogTimerAddress})
+
+	attempts := 0
+	for {
+		err := a.dev.Tx(r, w)
+		if err == nil {
+			return nil
+		}
+
+		attempts++
+		if attempts >= maxTxAttempts {
+			return err
+		}
+		time.Sleep(txRetryInterval)
+	}
 }
