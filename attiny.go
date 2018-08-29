@@ -19,10 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"encoding/binary"
 	"sync"
 	"time"
 
-	"golang.org/x/exp/io/i2c"
+	"periph.io/x/periph/conn/i2c"
+	"periph.io/x/periph/conn/i2c/i2creg"
+	"periph.io/x/periph/conn/mmr"
+	"periph.io/x/periph/host"
 )
 
 const (
@@ -44,24 +48,33 @@ const (
 // returns a wrapper for it. If no ATtiny was detected (nil, nil) will
 // be returned.
 func connectATtiny() (*attiny, error) {
-	dev, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, attinyAddress)
+	if _, err := host.Init(); err != nil {
+		return nil, err
+	}
+
+	bus, err := i2creg.Open("")
 	if err != nil {
 		return nil, err
 	}
+
+	dev := &mmr.Dev8{
+		Conn:  &i2c.Dev{Bus: bus, Addr: attinyAddress},
+		Order: binary.LittleEndian,
+	}
+
 	if !detectATtiny(dev) {
-		dev.Close()
+		bus.Close()
 		return nil, nil
 	}
 	return &attiny{dev: dev}, nil
 }
 
-func detectATtiny(dev *i2c.Device) bool {
+func detectATtiny(dev *mmr.Dev8) bool {
 	for i := 0; i < connectAttempts; i++ {
 		time.Sleep(connectAttemptInterval)
 
-		buf := make([]byte, 1)
-		dev.Read(buf)
-		if buf[0] == magicReturn {
+		value, err := dev.ReadUint8(0)
+		if err == nil && value == magicReturn {
 			return true
 		}
 	}
@@ -70,17 +83,18 @@ func detectATtiny(dev *i2c.Device) bool {
 
 type attiny struct {
 	mu  sync.Mutex
-	dev *i2c.Device
+	dev *mmr.Dev8
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
 // minutes specified.
 func (a *attiny) PowerOff(minutes int) error {
+	if minutes <= 0 {
+		return nil
+	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	lb := byte(minutes / 256)
-	rb := byte(minutes % 256)
-	return a.dev.Write([]byte{sleepAddress, lb, rb})
+	return a.dev.WriteUint16(sleepAddress, uint16(minutes))
 }
 
 // PingWatchdog ping's the ATTiny's watchdog timer to prevent it from
@@ -88,5 +102,5 @@ func (a *attiny) PowerOff(minutes int) error {
 func (a *attiny) PingWatchdog() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.dev.Write([]byte{watchdogTimerAddress})
+	return a.dev.Conn.Tx([]byte{watchdogTimerAddress}, nil)
 }
