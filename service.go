@@ -33,9 +33,10 @@ const (
 
 type service struct {
 	attinyPresent bool
+	attiny        *attiny
 }
 
-func startService(attinyPresent bool) error {
+func startService(attinyPresent bool, a *attiny) error {
 	conn, err := dbus.SystemBus()
 	if err != nil {
 		return err
@@ -50,6 +51,7 @@ func startService(attinyPresent bool) error {
 
 	s := &service{
 		attinyPresent: attinyPresent,
+		attiny:        a,
 	}
 	conn.Export(s, dbusPath, dbusName)
 	conn.Export(genIntrospectable(s), dbusPath, "org.freedesktop.DBus.Introspectable")
@@ -81,4 +83,16 @@ func (s service) StayOnFor(m int) *dbus.Error {
 		}
 	}
 	return nil
+}
+
+// ReadBatteryPin will return the analog battery sense pin value on the attiny
+func (s service) ReadBatteryPin() (uint16, *dbus.Error) {
+	bat, err := s.attiny.readBatteryValue()
+	if err != nil {
+		return 0, &dbus.Error{
+			Name: dbusName + ".ReadBatteryPin",
+			Body: []interface{}{err.Error()},
+		}
+	}
+	return bat, nil
 }

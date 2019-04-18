@@ -107,7 +107,7 @@ func runMain() error {
 	attinyPresent := attiny != nil
 
 	log.Println("starting D-Bus service")
-	if err := startService(attinyPresent); err != nil {
+	if err := startService(attinyPresent, attiny); err != nil {
 		return err
 	}
 	log.Println("started D-Bus service")
