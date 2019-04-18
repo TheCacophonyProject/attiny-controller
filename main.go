@@ -120,6 +120,12 @@ func runMain() error {
 
 	go updateWatchdogTimer(attiny)
 
+	bat, err := attiny.readBatteryValue()
+	if err != nil {
+		return err
+	}
+	log.Printf("battery reading: %d\n", bat)
+
 	conf, err := ParseAttinyConfigFile(args.ConfigFile)
 	if err != nil {
 		log.Printf("failed to read config: %v", err)

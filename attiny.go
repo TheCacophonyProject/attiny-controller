@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"encoding/binary"
 	"sync"
 	"time"
 
@@ -104,6 +105,17 @@ func (a *attiny) PowerOff(minutes int) error {
 // rebooting the system.
 func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
+}
+
+// readBatteryValue will get the analog value read by the attiny on the battery sense pin
+func (a *attiny) readBatteryValue() (uint16, error) {
+	r := make([]byte, 2)
+	w := []byte{0x20}
+	err := a.tx(r, w)
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint16(r), nil
 }
 
 func (a *attiny) write(reg uint8, b []byte) error {
