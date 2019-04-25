@@ -1,2 +1,7 @@
 pi-wake-time: 20:00
 pi-sleep-time: 20:00
+
+voltages:
+  no-battery: 10
+  low-battery: 369
+  full-battery: 455

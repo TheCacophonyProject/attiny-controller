@@ -99,39 +99,45 @@ func runMain() error {
 
 	log.Printf("running version: %s", version)
 
-	log.Println("connecting to attiny")
-	attiny, err := connectATtiny()
+	conf, err := ParseAttinyConfigFile(args.ConfigFile)
 	if err != nil {
 		return err
 	}
-	attinyPresent := attiny != nil
 
-	log.Println("starting D-Bus service")
-	if err := startService(attinyPresent, attiny); err != nil {
+	log.Println("connecting to attiny")
+	attiny, err := connectATtiny(conf.Voltages)
+	if err != nil {
 		return err
 	}
-	log.Println("started D-Bus service")
-
-	if !attinyPresent {
+	if attiny == nil {
 		log.Println("attiny not present")
 		return nil
 	}
 	log.Println("connected to attiny")
 
+	if err := attiny.checkIsOnBattery(); err != nil {
+		return err
+	}
+	if attiny.onBattery {
+		log.Println("on battery power")
+	} else {
+		log.Println("not on battery")
+	}
+
+	log.Println("starting D-Bus service")
+	if err := startService(attiny); err != nil {
+		return err
+	}
+	log.Println("started D-Bus service")
+
 	go updateWatchdogTimer(attiny)
 
-	bat, err := attiny.readBatteryValue()
+	batSense, err := attiny.readBatteryValue()
 	if err != nil {
 		return err
 	}
-	log.Printf("battery reading: %d\n", bat)
+	log.Printf("battery sense reading: %d\n", batSense)
 
-	conf, err := ParseAttinyConfigFile(args.ConfigFile)
-	if err != nil {
-		log.Printf("failed to read config: %v", err)
-		log.Printf("pinging watchdog only")
-		return nil
-	}
 	log.Printf("on window: %02d:%02d to %02d:%02d",
 		conf.PiWakeTime.Hour(), conf.PiWakeTime.Minute(),
 		conf.PiSleepTime.Hour(), conf.PiSleepTime.Minute())

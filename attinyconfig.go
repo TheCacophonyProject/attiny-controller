@@ -29,6 +29,7 @@ import (
 type AttinyConfig struct {
 	PiWakeTime  time.Time
 	PiSleepTime time.Time
+	Voltages    Voltages
 }
 
 func (conf *AttinyConfig) Validate() error {
@@ -42,8 +43,15 @@ func (conf *AttinyConfig) Validate() error {
 }
 
 type rawConfig struct {
-	PiWakeUp string `yaml:"pi-wake-time"`
-	PiSleep  string `yaml:"pi-sleep-time"`
+	PiWakeUp string   `yaml:"pi-wake-time"`
+	PiSleep  string   `yaml:"pi-sleep-time"`
+	Voltages Voltages `yaml:"voltages"`
+}
+
+type Voltages struct {
+	NoBattery   uint16 `yaml:"no-battery"`  // if voltage reading is less than this it is not powered by a battery
+	LowBattery  uint16 `yaml:"low-battery"` // Voltage of a low battery
+	FullBattery uint16 `yaml:"fullBattery"` // Voltage of a full battery
 }
 
 func ParseAttinyConfigFile(filename string) (*AttinyConfig, error) {
@@ -60,7 +68,9 @@ func ParseAttinyConfig(buf []byte) (*AttinyConfig, error) {
 		return nil, err
 	}
 
-	conf := &AttinyConfig{}
+	conf := &AttinyConfig{
+		Voltages: raw.Voltages,
+	}
 
 	const timeOnly = "15:04"
 	if raw.PiWakeUp != "" {
