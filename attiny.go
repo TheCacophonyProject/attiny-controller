@@ -120,13 +120,15 @@ func (a *attiny) checkIsOnBattery() error {
 
 // readBatteryValue will get the analog value read by the attiny on the battery sense pin
 func (a *attiny) readBatteryValue() (uint16, error) {
-	r := make([]byte, 2)
-	w := []byte{0x20}
-	err := a.tx(r, w)
-	if err != nil {
+	l := make([]byte, 1)
+	h := make([]byte, 1)
+	if err := a.tx(l, []byte{0x20}); err != nil {
 		return 0, err
 	}
-	return binary.LittleEndian.Uint16(r), nil
+	if err := a.tx(h, []byte{0x21}); err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint16([]byte{h[0], l[0]}), nil
 }
 
 func (a *attiny) write(reg uint8, b []byte) error {
