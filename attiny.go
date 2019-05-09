@@ -120,6 +120,9 @@ func (a *attiny) checkIsOnBattery() error {
 
 // readBatteryValue will get the analog value read by the attiny on the battery sense pin
 func (a *attiny) readBatteryValue() (uint16, error) {
+	if !a.voltages.Enable {
+		return 0, nil
+	}
 	l := make([]byte, 1)
 	h := make([]byte, 1)
 	if err := a.tx(l, []byte{0x20}); err != nil {

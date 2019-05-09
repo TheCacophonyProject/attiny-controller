@@ -49,7 +49,8 @@ type rawConfig struct {
 }
 
 type Voltages struct {
-	NoBattery   uint16 `yaml:"no-battery"`   // if voltage reading is less than this it is not powered by a battery
+	Enable      bool   `yaml:"enable"`       // Enable reading voltage through ATtiny
+	NoBattery   uint16 `yaml:"no-battery"`   // If voltage reading is less than this it is not powered by a battery
 	LowBattery  uint16 `yaml:"low-battery"`  // Voltage of a low battery
 	FullBattery uint16 `yaml:"full-battery"` // Voltage of a full battery
 }
