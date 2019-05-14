@@ -98,7 +98,11 @@ func (s service) OnBattery() (bool, *dbus.Error) {
 	if err := s.attinyNillCheck(); err != nil {
 		return false, makeDbusError(".OnBattery", err)
 	}
-	return s.attiny.onBattery, nil
+	onBattery, err := s.attiny.checkIsOnBattery()
+	if err != nil {
+		return false, makeDbusError(".OnBattery", err)
+	}
+	return onBattery, nil
 }
 
 func (s *service) attinyNillCheck() error {

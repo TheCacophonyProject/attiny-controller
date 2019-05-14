@@ -115,10 +115,11 @@ func runMain() error {
 	}
 	log.Println("connected to attiny")
 
-	if err := attiny.checkIsOnBattery(); err != nil {
+	onBattery, err := attiny.checkIsOnBattery()
+	if err != nil {
 		return err
 	}
-	if attiny.onBattery {
+	if onBattery {
 		log.Println("on battery power")
 	} else {
 		log.Println("not on battery")

@@ -86,10 +86,9 @@ func detectATtiny(dev *i2c.Dev) bool {
 }
 
 type attiny struct {
-	mu        sync.Mutex
-	dev       *i2c.Dev
-	onBattery bool
-	voltages  Voltages
+	mu       sync.Mutex
+	dev      *i2c.Dev
+	voltages Voltages
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
@@ -109,13 +108,12 @@ func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
 }
 
-func (a *attiny) checkIsOnBattery() error {
+func (a *attiny) checkIsOnBattery() (bool, error) {
 	batVal, err := a.readBatteryValue()
 	if err != nil {
-		return err
+		return false, err
 	}
-	a.onBattery = batVal > a.voltages.NoBattery
-	return nil
+	return batVal > a.voltages.NoBattery, nil
 }
 
 // readBatteryValue will get the analog value read by the attiny on the battery sense pin
