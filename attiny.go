@@ -31,8 +31,10 @@ import (
 const (
 	attinyAddress = 0x04
 
-	watchdogReg = 0x12
-	sleepReg    = 0x11
+	watchdogReg         = 0x12
+	sleepReg            = 0x11
+	batteryVoltageLoReg = 0x20
+	batteryVoltageHiReg = 0x21
 
 	// 3 was just a randomly chosen as the number for the attiny to return
 	// to indicate its presence.
@@ -123,10 +125,10 @@ func (a *attiny) readBatteryValue() (uint16, error) {
 	}
 	l := make([]byte, 1)
 	h := make([]byte, 1)
-	if err := a.tx(l, []byte{0x20}); err != nil {
+	if err := a.tx(l, []byte{batteryVoltageLoReg}); err != nil {
 		return 0, err
 	}
-	if err := a.tx(h, []byte{0x21}); err != nil {
+	if err := a.tx(h, []byte{batteryVoltageHiReg}); err != nil {
 		return 0, err
 	}
 	return binary.BigEndian.Uint16([]byte{h[0], l[0]}), nil
