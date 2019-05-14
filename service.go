@@ -83,7 +83,7 @@ func (s service) StayOnFor(m int) *dbus.Error {
 
 // ReadBatteryPin will return the analog battery sense pin value on the attiny
 func (s service) ReadBatteryPin() (uint16, *dbus.Error) {
-	if err := s.attinyNillCheck(); err != nil {
+	if err := s.ensureATtinyPresent(); err != nil {
 		return 0, makeDbusError(".ReadBatteryPin", err)
 	}
 	bat, err := s.attiny.readBatteryValue()
@@ -95,7 +95,7 @@ func (s service) ReadBatteryPin() (uint16, *dbus.Error) {
 
 // OnBattery will return true when the input voltage is higher than 5.5V
 func (s service) OnBattery() (bool, *dbus.Error) {
-	if err := s.attinyNillCheck(); err != nil {
+	if err := s.ensureATtinyPresent(); err != nil {
 		return false, makeDbusError(".OnBattery", err)
 	}
 	onBattery, err := s.attiny.checkIsOnBattery()
@@ -105,7 +105,7 @@ func (s service) OnBattery() (bool, *dbus.Error) {
 	return onBattery, nil
 }
 
-func (s *service) attinyNillCheck() error {
+func (s *service) ensureATtinyPresent() error {
 	if s.attiny == nil {
 		return fmt.Errorf("no attiny")
 	}
