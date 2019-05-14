@@ -20,6 +20,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/godbus/dbus"
@@ -32,10 +33,10 @@ const (
 )
 
 type service struct {
-	attinyPresent bool
+	attiny *attiny
 }
 
-func startService(attinyPresent bool) error {
+func startService(a *attiny) error {
 	conn, err := dbus.SystemBus()
 	if err != nil {
 		return err
@@ -49,7 +50,7 @@ func startService(attinyPresent bool) error {
 	}
 
 	s := &service{
-		attinyPresent: attinyPresent,
+		attiny: a,
 	}
 	conn.Export(s, dbusPath, dbusName)
 	conn.Export(genIntrospectable(s), dbusPath, "org.freedesktop.DBus.Introspectable")
@@ -68,17 +69,52 @@ func genIntrospectable(v interface{}) introspect.Introspectable {
 
 // IsPresent returns whether or not an ATtiny was detected.
 func (s service) IsPresent() (bool, *dbus.Error) {
-	return s.attinyPresent, nil
+	return s.attiny != nil, nil
 }
 
 // StayOnFor will delay turning off the raspberry pi for m minutes.
 func (s service) StayOnFor(m int) *dbus.Error {
 	err := setStayOnUntil(time.Now().Add(time.Duration(m) * time.Minute))
 	if err != nil {
-		return &dbus.Error{
-			Name: dbusName + ".StayOnForError",
-			Body: []interface{}{err.Error()},
-		}
+		return makeDbusError(".StayOnForError", err)
 	}
 	return nil
+}
+
+// ReadBatteryPin will return the analog battery sense pin value on the attiny
+func (s service) ReadBatteryPin() (uint16, *dbus.Error) {
+	if err := s.ensureATtinyPresent(); err != nil {
+		return 0, makeDbusError(".ReadBatteryPin", err)
+	}
+	bat, err := s.attiny.readBatteryValue()
+	if err != nil {
+		return 0, makeDbusError(".ReadBatteryPin", err)
+	}
+	return bat, nil
+}
+
+// OnBattery will return true when the input voltage is higher than 5.5V
+func (s service) OnBattery() (bool, *dbus.Error) {
+	if err := s.ensureATtinyPresent(); err != nil {
+		return false, makeDbusError(".OnBattery", err)
+	}
+	onBattery, err := s.attiny.checkIsOnBattery()
+	if err != nil {
+		return false, makeDbusError(".OnBattery", err)
+	}
+	return onBattery, nil
+}
+
+func (s *service) ensureATtinyPresent() error {
+	if s.attiny == nil {
+		return fmt.Errorf("no attiny")
+	}
+	return nil
+}
+
+func makeDbusError(name string, err error) *dbus.Error {
+	return &dbus.Error{
+		Name: dbusName + name,
+		Body: []interface{}{err.Error()},
+	}
 }

@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"encoding/binary"
 	"sync"
 	"time"
 
@@ -30,8 +31,10 @@ import (
 const (
 	attinyAddress = 0x04
 
-	watchdogReg = 0x12
-	sleepReg    = 0x11
+	watchdogReg         = 0x12
+	sleepReg            = 0x11
+	batteryVoltageLoReg = 0x20
+	batteryVoltageHiReg = 0x21
 
 	// 3 was just a randomly chosen as the number for the attiny to return
 	// to indicate its presence.
@@ -49,7 +52,7 @@ const (
 // connectATtiny sets up a i2c device for talking to the ATtiny and
 // returns a wrapper for it. If no ATtiny was detected (nil, nil) will
 // be returned.
-func connectATtiny() (*attiny, error) {
+func connectATtiny(voltages Voltages) (*attiny, error) {
 	if _, err := host.Init(); err != nil {
 		return nil, err
 	}
@@ -63,7 +66,7 @@ func connectATtiny() (*attiny, error) {
 		bus.Close()
 		return nil, nil
 	}
-	return &attiny{dev: dev}, nil
+	return &attiny{dev: dev, voltages: voltages}, nil
 }
 
 func detectATtiny(dev *i2c.Dev) bool {
@@ -85,8 +88,11 @@ func detectATtiny(dev *i2c.Dev) bool {
 }
 
 type attiny struct {
-	mu  sync.Mutex
-	dev *i2c.Dev
+	mu               sync.Mutex
+	dev              *i2c.Dev
+	voltages         Voltages
+	checkedOnBattery bool
+	onBattery        bool
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
@@ -104,6 +110,38 @@ func (a *attiny) PowerOff(minutes int) error {
 // rebooting the system.
 func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
+}
+
+func (a *attiny) checkIsOnBattery() (bool, error) {
+	if a.checkedOnBattery {
+		return a.onBattery, nil
+	}
+	batVal, err := a.readBatteryValue()
+	if err != nil {
+		return false, err
+	}
+	a.onBattery = batVal > a.voltages.NoBattery
+	a.checkedOnBattery = true
+	return a.onBattery, nil
+}
+
+// readBatteryValue will get the analog value read by the attiny on the battery sense pin
+func (a *attiny) readBatteryValue() (uint16, error) {
+	if !a.voltages.Enable {
+		return 0, nil
+	}
+	l := make([]byte, 1)
+	h := make([]byte, 1)
+	if err := a.tx(l, []byte{batteryVoltageLoReg}); err != nil {
+		return 0, err
+	}
+	if err := a.tx(h, []byte{batteryVoltageHiReg}); err != nil {
+		return 0, err
+	}
+	if h[0] == 127 || l[0] == 127 {
+		return a.readBatteryValue()
+	}
+	return binary.BigEndian.Uint16([]byte{h[0], l[0]}), nil
 }
 
 func (a *attiny) write(reg uint8, b []byte) error {
