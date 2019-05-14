@@ -131,6 +131,9 @@ func (a *attiny) readBatteryValue() (uint16, error) {
 	if err := a.tx(h, []byte{batteryVoltageHiReg}); err != nil {
 		return 0, err
 	}
+	if h[0] == 127 || l[0] == 127 {
+		return a.readBatteryValue()
+	}
 	return binary.BigEndian.Uint16([]byte{h[0], l[0]}), nil
 }
 
