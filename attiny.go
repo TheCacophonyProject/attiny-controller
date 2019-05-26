@@ -35,6 +35,7 @@ const (
 	sleepReg            = 0x11
 	batteryVoltageLoReg = 0x20
 	batteryVoltageHiReg = 0x21
+	wifiStateReg        = 0x13
 
 	// 3 was just a randomly chosen as the number for the attiny to return
 	// to indicate its presence.
@@ -110,6 +111,13 @@ func (a *attiny) PowerOff(minutes int) error {
 // rebooting the system.
 func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
+}
+
+func (a *attiny) SetWifiState(state bool) error {
+	if state {
+		return a.write(wifiStateReg, []byte{1})
+	}
+	return a.write(wifiStateReg, []byte{0})
 }
 
 func (a *attiny) checkIsOnBattery() (bool, error) {
