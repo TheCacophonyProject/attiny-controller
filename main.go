@@ -24,7 +24,6 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -133,7 +132,7 @@ func runMain() error {
 	log.Println("started D-Bus service")
 
 	go updateWatchdogTimer(attiny)
-	go updateWifiState(attiny)
+	attiny.UpdateWifiState()
 
 	batSense, err := attiny.readBatteryValue()
 	if err != nil {
@@ -188,31 +187,6 @@ func updateWatchdogTimer(a *attiny) {
 		}
 		time.Sleep(time.Minute)
 	}
-}
-
-func updateWifiState(a *attiny) {
-	connectedState := false
-	for {
-		if connectedState != wifiConnected() {
-			if err := a.SetWifiState(!connectedState); err != nil {
-				log.Println("error with updating wifi state")
-				time.Sleep(time.Minute)
-			} else {
-				connectedState = !connectedState
-				log.Printf("updated wifi connected state to '%t'", connectedState)
-			}
-		}
-		time.Sleep(time.Second)
-	}
-}
-
-func wifiConnected() bool {
-	outByte, err := exec.Command("ip", "a", "show", "wlan0").Output()
-	if err != nil {
-		log.Printf("error: %v\n", err)
-		return false
-	}
-	return strings.Contains(string(outByte), "state UP")
 }
 
 func shutdown() error {

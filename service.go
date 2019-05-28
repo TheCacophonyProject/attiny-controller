@@ -105,6 +105,13 @@ func (s service) OnBattery() (bool, *dbus.Error) {
 	return onBattery, nil
 }
 
+func (s service) UpdateWifiState() *dbus.Error {
+	if err := s.attiny.UpdateWifiState(); err != nil {
+		return makeDbusError(".UpdateWifiState", err)
+	}
+	return nil
+}
+
 func (s *service) ensureATtinyPresent() error {
 	if s.attiny == nil {
 		return fmt.Errorf("no attiny")

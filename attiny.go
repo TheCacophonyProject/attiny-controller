@@ -20,6 +20,9 @@ package main
 
 import (
 	"encoding/binary"
+	"log"
+	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -48,6 +51,8 @@ const (
 	// Parameters for transaction retries.
 	maxTxAttempts   = 5
 	txRetryInterval = time.Second
+
+	wifiInterface = "wlan0" // If this is changed also change it in /_release/10-notify-attiny to match
 )
 
 // connectATtiny sets up a i2c device for talking to the ATtiny and
@@ -89,11 +94,12 @@ func detectATtiny(dev *i2c.Dev) bool {
 }
 
 type attiny struct {
-	mu               sync.Mutex
-	dev              *i2c.Dev
-	voltages         Voltages
-	checkedOnBattery bool
-	onBattery        bool
+	mu                 sync.Mutex
+	dev                *i2c.Dev
+	voltages           Voltages
+	checkedOnBattery   bool
+	onBattery          bool
+	wifiConnectedState bool
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
@@ -113,11 +119,25 @@ func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
 }
 
-func (a *attiny) SetWifiState(state bool) error {
-	if state {
-		return a.write(wifiStateReg, []byte{1})
+func (a *attiny) UpdateWifiState() error {
+	outByte, err := exec.Command("ip", "a", "show", wifiInterface).Output()
+	if err != nil {
+		return err
 	}
-	return a.write(wifiStateReg, []byte{0})
+	newState := strings.Contains(string(outByte), "state UP")
+	if a.wifiConnectedState == newState {
+		return nil
+	}
+	var b byte = 0x00
+	if newState {
+		b = 0x01
+	}
+	err = a.write(wifiStateReg, []byte{b})
+	if err == nil {
+		a.wifiConnectedState = newState
+		log.Printf("updated wifi connected state to '%t'", a.wifiConnectedState)
+	}
+	return err
 }
 
 func (a *attiny) checkIsOnBattery() (bool, error) {
