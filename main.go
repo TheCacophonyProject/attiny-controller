@@ -132,6 +132,9 @@ func runMain() error {
 	log.Println("started D-Bus service")
 
 	go updateWatchdogTimer(attiny)
+	if err := attiny.UpdateWifiState(); err != nil {
+		log.Println("failed to update wifi state:", err)
+	}
 
 	batSense, err := attiny.readBatteryValue()
 	if err != nil {

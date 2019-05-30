@@ -31,6 +31,7 @@ nfpm:
     "_release/attiny-controller.service": "/etc/systemd/system/attiny-controller.service"
     "_release/org.cacophony.ATtiny.conf": "/etc/dbus-1/system.d/org.cacophony.ATtiny.conf"
     "_release/stay-on-for": "/usr/bin/stay-on-for"
+    "_release/10-notify-attiny": "/lib/dhcpcd/dhcpcd-hooks/10-notify-attiny"
   config_files:
     "_release/attiny.yaml": "/etc/cacophony/attiny.yaml"
 

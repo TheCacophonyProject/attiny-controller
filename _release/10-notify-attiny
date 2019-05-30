@@ -1,0 +1,5 @@
+#!/bin/bash
+# dhcpcd hook script to notify attiny-controller that the wifi state has changed
+if [ $interface = "wlan0" ]; then
+  dbus-send --system --type=method_call --print-reply --dest=org.cacophony.ATtiny /org/cacophony/ATtiny org.cacophony.ATtiny.UpdateWifiState
+fi
