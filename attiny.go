@@ -94,11 +94,14 @@ func detectATtiny(dev *i2c.Dev) bool {
 }
 
 type attiny struct {
-	mu                 sync.Mutex
-	dev                *i2c.Dev
-	voltages           Voltages
-	checkedOnBattery   bool
-	onBattery          bool
+	mu  sync.Mutex
+	dev *i2c.Dev
+
+	voltages         Voltages
+	checkedOnBattery bool
+	onBattery        bool
+
+	wifiMu             sync.Mutex
 	wifiConnectedState bool
 }
 
@@ -120,6 +123,8 @@ func (a *attiny) PingWatchdog() error {
 }
 
 func (a *attiny) UpdateWifiState() error {
+	a.wifiMu.Lock()
+	defer a.wifiMu.Unlock()
 	outByte, err := exec.Command("ip", "a", "show", wifiInterface).Output()
 	if err != nil {
 		return err
