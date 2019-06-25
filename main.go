@@ -117,7 +117,7 @@ func runMain() error {
 
 	onBattery, err := attiny.checkIsOnBattery()
 	if err != nil {
-		return err
+		log.Println(err.Error())
 	}
 	if onBattery {
 		log.Println("on battery power")
@@ -138,7 +138,7 @@ func runMain() error {
 
 	batSense, err := attiny.readBatteryValue()
 	if err != nil {
-		return err
+		log.Println(err.Error())
 	}
 	log.Printf("battery sense reading: %d\n", batSense)
 

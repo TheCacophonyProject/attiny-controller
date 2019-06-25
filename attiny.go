@@ -20,6 +20,7 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -32,6 +33,8 @@ import (
 )
 
 const (
+	wantedVersion = 4
+
 	attinyAddress = 0x04
 
 	watchdogReg         = 0x12
@@ -39,6 +42,7 @@ const (
 	batteryVoltageLoReg = 0x20
 	batteryVoltageHiReg = 0x21
 	wifiStateReg        = 0x13
+	versionReg          = 0x22
 
 	// 3 was just a randomly chosen as the number for the attiny to return
 	// to indicate its presence.
@@ -72,7 +76,17 @@ func connectATtiny(voltages Voltages) (*attiny, error) {
 		bus.Close()
 		return nil, nil
 	}
-	return &attiny{dev: dev, voltages: voltages}, nil
+
+	a := &attiny{dev: dev, voltages: voltages}
+	if err := a.getVersion(); err != nil {
+		return nil, err
+	}
+	log.Printf("attiny version: %d\n", a.version)
+	if wantedVersion > a.version {
+		log.Printf("wanted attiny version %d or higher. Have version %d."+
+			" Some features won't be available\n", wantedVersion, a.version)
+	}
+	return a, nil
 }
 
 func detectATtiny(dev *i2c.Dev) bool {
@@ -94,8 +108,9 @@ func detectATtiny(dev *i2c.Dev) bool {
 }
 
 type attiny struct {
-	mu  sync.Mutex
-	dev *i2c.Dev
+	mu      sync.Mutex
+	dev     *i2c.Dev
+	version uint8
 
 	voltages         Voltages
 	checkedOnBattery bool
@@ -103,6 +118,23 @@ type attiny struct {
 
 	wifiMu             sync.Mutex
 	wifiConnectedState bool
+}
+
+func (a *attiny) getVersion() error {
+	version, err := a.readUint8(versionReg)
+	if err != nil {
+		return err
+	}
+	a.version = version
+	return nil
+}
+
+func (a *attiny) readUint8(reg byte) (uint8, error) {
+	i := make([]byte, 1)
+	if err := a.tx(i, []byte{reg}); err != nil {
+		return 0, err
+	}
+	return uint8(i[0]), nil
 }
 
 // PowerOff asks the ATtiny to turn the system off for the number of
@@ -122,7 +154,16 @@ func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
 }
 
+func (a *attiny) wrongVersionError(name string, requiredVersion uint8) error {
+	return fmt.Errorf("attiny version was %d and needs version %d or above for '%s'", a.version, requiredVersion, name)
+}
+
 func (a *attiny) UpdateWifiState() error {
+	var requiredVersion uint8 = 4
+	if a.version < requiredVersion {
+		return a.wrongVersionError("UpdateWifiState", requiredVersion)
+	}
+
 	a.wifiMu.Lock()
 	defer a.wifiMu.Unlock()
 	outByte, err := exec.Command("ip", "a", "show", wifiInterface).Output()
@@ -146,6 +187,10 @@ func (a *attiny) UpdateWifiState() error {
 }
 
 func (a *attiny) checkIsOnBattery() (bool, error) {
+	var requiredVersion uint8 = 4
+	if a.version < requiredVersion {
+		return false, a.wrongVersionError("checkIsOnBattery", requiredVersion)
+	}
 	if a.checkedOnBattery {
 		return a.onBattery, nil
 	}
@@ -160,6 +205,10 @@ func (a *attiny) checkIsOnBattery() (bool, error) {
 
 // readBatteryValue will get the analog value read by the attiny on the battery sense pin
 func (a *attiny) readBatteryValue() (uint16, error) {
+	var requiredVersion uint8 = 4
+	if a.version < requiredVersion {
+		return 0, a.wrongVersionError("readBatteryValue", requiredVersion)
+	}
 	if !a.voltages.Enable {
 		return 0, nil
 	}
