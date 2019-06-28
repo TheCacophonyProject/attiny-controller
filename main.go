@@ -115,11 +115,9 @@ func runMain() error {
 	}
 	log.Println("connected to attiny")
 
-	onBattery, err := attiny.checkIsOnBattery()
-	if err != nil {
+	if onBattery, err := attiny.checkIsOnBattery(); err != nil {
 		log.Println(err.Error())
-	}
-	if onBattery {
+	} else if onBattery {
 		log.Println("on battery power")
 	} else {
 		log.Println("not on battery")
@@ -136,11 +134,11 @@ func runMain() error {
 		log.Println("failed to update wifi state:", err)
 	}
 
-	batSense, err := attiny.readBatteryValue()
-	if err != nil {
+	if batSense, err := attiny.readBatteryValue(); err != nil {
 		log.Println(err.Error())
+	} else {
+		log.Printf("battery sense reading: %d\n", batSense)
 	}
-	log.Printf("battery sense reading: %d\n", batSense)
 
 	log.Printf("on window: %02d:%02d to %02d:%02d",
 		conf.PiWakeTime.Hour(), conf.PiWakeTime.Minute(),

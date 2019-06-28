@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -154,14 +155,19 @@ func (a *attiny) PingWatchdog() error {
 	return a.write(watchdogReg, nil)
 }
 
-func (a *attiny) wrongVersionError(name string, requiredVersion uint8) error {
-	return fmt.Errorf("attiny version was %d and needs version %d or above for '%s'", a.version, requiredVersion, name)
+func (a *attiny) versionCheck(requiredVersion uint8) error {
+	fpcs := make([]uintptr, 1)
+	runtime.Callers(2, fpcs)
+	caller := runtime.FuncForPC(fpcs[0] - 1)
+	if a.version < requiredVersion {
+		return fmt.Errorf("attiny version was %d and needs version %d or above for '%s'", a.version, requiredVersion, caller.Name())
+	}
+	return nil
 }
 
 func (a *attiny) UpdateWifiState() error {
-	var requiredVersion uint8 = 4
-	if a.version < requiredVersion {
-		return a.wrongVersionError("UpdateWifiState", requiredVersion)
+	if err := a.versionCheck(4); err != nil {
+		return err
 	}
 
 	a.wifiMu.Lock()
@@ -187,9 +193,8 @@ func (a *attiny) UpdateWifiState() error {
 }
 
 func (a *attiny) checkIsOnBattery() (bool, error) {
-	var requiredVersion uint8 = 4
-	if a.version < requiredVersion {
-		return false, a.wrongVersionError("checkIsOnBattery", requiredVersion)
+	if err := a.versionCheck(4); err != nil {
+		return false, err
 	}
 	if a.checkedOnBattery {
 		return a.onBattery, nil
@@ -205,9 +210,8 @@ func (a *attiny) checkIsOnBattery() (bool, error) {
 
 // readBatteryValue will get the analog value read by the attiny on the battery sense pin
 func (a *attiny) readBatteryValue() (uint16, error) {
-	var requiredVersion uint8 = 4
-	if a.version < requiredVersion {
-		return 0, a.wrongVersionError("readBatteryValue", requiredVersion)
+	if err := a.versionCheck(4); err != nil {
+		return 0, err
 	}
 	if !a.voltages.Enable {
 		return 0, nil
