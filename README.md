@@ -25,3 +25,10 @@ dbus-send \
     /org/cacophony/ATtiny \
     org.cacophony.ATtiny.IsPresent
 ```
+
+## Releases
+
+Releases are built using TravisCI. To create a release visit the
+[repository on Github](https://github.com/TheCacophonyProject/attiny-controllerreleases)
+and then follow our [general instructions](https://docs.cacophony.org.nz/home/creating-releases)
+for creating a release.
