@@ -27,7 +27,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TheCacophonyProject/window"
 	arg "github.com/alexflint/go-arg"
 	"golang.org/x/sys/unix"
 )
@@ -65,6 +64,7 @@ func setStayOnUntil(newTime time.Time) error {
 
 type Args struct {
 	ConfigFile         string `arg:"-c,--config" help:"path to configuration file"`
+	LocationFile       string `arg:"-l,--location" help:"path to location file"`
 	SkipWait           bool   `arg:"-s,--skip-wait" help:"will not wait for the date to update"`
 	Timestamps         bool   `arg:"-t,--timestamps" help:"include timestamps in log output"`
 	SkipSystemShutdown bool   `arg:"--skip-system-shutdown" help:"don't shut down operating system when powering down"`
@@ -75,8 +75,10 @@ func (Args) Version() string {
 }
 
 func procArgs() Args {
-	var args Args
-	args.ConfigFile = "/etc/cacophony/attiny.yaml"
+	args := Args{
+		ConfigFile:   "/etc/cacophony/attiny.yaml",
+		LocationFile: "/etc/cacophony/location.yaml",
+	}
 	arg.MustParse(&args)
 	return args
 }
@@ -99,7 +101,7 @@ func runMain() error {
 
 	log.Printf("running version: %s", version)
 
-	conf, err := ParseAttinyConfigFile(args.ConfigFile)
+	conf, err := ParseAttinyConfigFile(args.ConfigFile, args.LocationFile)
 	if err != nil {
 		return err
 	}
@@ -140,11 +142,9 @@ func runMain() error {
 		log.Printf("battery sense reading: %d\n", batSense)
 	}
 
-	log.Printf("on window: %02d:%02d to %02d:%02d",
-		conf.PiWakeTime.Hour(), conf.PiWakeTime.Minute(),
-		conf.PiSleepTime.Hour(), conf.PiSleepTime.Minute())
+	log.Printf("on window: %s", conf.OnWindow)
 
-	if conf.PiWakeTime.Equal(conf.PiSleepTime) {
+	if conf.OnWindow.NoWindow {
 		log.Printf("no window active so pinging watchdog only")
 		runtime.Goexit()
 	}
@@ -155,27 +155,33 @@ func runMain() error {
 	}
 
 	for {
-		window := window.New(conf.PiWakeTime, conf.PiSleepTime)
-		minutesUntilActive := int(window.Until().Minutes())
-		log.Printf("minutes until active %d", minutesUntilActive)
-		if shouldTurnOff(minutesUntilActive) {
-			log.Println("syncing filesystems...")
-			unix.Sync()
+		if conf.OnWindow.Active() {
+			untilEnd := conf.OnWindow.UntilEnd()
+			log.Printf("%s until on window ends", untilEnd)
+			log.Println("sleeping until end of window")
+			time.Sleep(untilEnd)
+		} else {
+			minutesUntilActive := int(conf.OnWindow.Until().Minutes())
+			log.Printf("minutes until active %d", minutesUntilActive)
+			if shouldTurnOff(minutesUntilActive) {
+				log.Println("syncing filesystems...")
+				unix.Sync()
 
-			log.Println("requesting power off...")
-			if err := attiny.PowerOff(minutesUntilActive - 2); err != nil {
-				log.Fatal(err)
-			}
-			log.Println("power off requested")
-
-			if !args.SkipSystemShutdown {
-				log.Println("shutting down system...")
-				if err := shutdown(); err != nil {
+				log.Println("requesting power off...")
+				if err := attiny.PowerOff(minutesUntilActive - 2); err != nil {
 					log.Fatal(err)
 				}
+				log.Println("power off requested")
+
+				if !args.SkipSystemShutdown {
+					log.Println("shutting down system...")
+					if err := shutdown(); err != nil {
+						log.Fatal(err)
+					}
+				}
 			}
+			time.Sleep(time.Minute * 5)
 		}
-		time.Sleep(time.Minute * 5)
 	}
 }
 

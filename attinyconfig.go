@@ -19,27 +19,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"errors"
 	"io/ioutil"
-	"time"
+	"os"
 
+	"github.com/TheCacophonyProject/attiny-controller/location"
+	"github.com/TheCacophonyProject/window"
 	yaml "gopkg.in/yaml.v2"
 )
 
 type AttinyConfig struct {
-	PiWakeTime  time.Time
-	PiSleepTime time.Time
-	Voltages    Voltages
-}
-
-func (conf *AttinyConfig) Validate() error {
-	if conf.PiSleepTime.IsZero() && !conf.PiWakeTime.IsZero() {
-		return errors.New("pi-sleep-time is set but pi-wake-time isn't")
-	}
-	if !conf.PiSleepTime.IsZero() && conf.PiWakeTime.IsZero() {
-		return errors.New("pi-wake-time is set but pi-sleep-time isn't")
-	}
-	return nil
+	OnWindow *window.Window
+	Voltages Voltages
 }
 
 type rawConfig struct {
@@ -55,15 +45,26 @@ type Voltages struct {
 	FullBattery uint16 `yaml:"full-battery"` // Voltage of a full battery
 }
 
-func ParseAttinyConfigFile(filename string) (*AttinyConfig, error) {
+func ParseAttinyConfigFile(filename, locationFile string) (*AttinyConfig, error) {
 	buf, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAttinyConfig(buf)
+
+	locationBuf, err := ioutil.ReadFile(locationFile)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	loc, err := location.New(locationBuf)
+	if err != nil {
+		return nil, err
+	}
+
+	return ParseAttinyConfig(buf, loc)
 }
 
-func ParseAttinyConfig(buf []byte) (*AttinyConfig, error) {
+func ParseAttinyConfig(buf []byte, loc *location.LocationConfig) (*AttinyConfig, error) {
 	raw := rawConfig{}
 	if err := yaml.Unmarshal(buf, &raw); err != nil {
 		return nil, err
@@ -73,26 +74,11 @@ func ParseAttinyConfig(buf []byte) (*AttinyConfig, error) {
 		Voltages: raw.Voltages,
 	}
 
-	const timeOnly = "15:04"
-	if raw.PiWakeUp != "" {
-		t, err := time.Parse(timeOnly, raw.PiWakeUp)
-		if err != nil {
-			return nil, errors.New("invalid Pi wake up time")
-		}
-		conf.PiWakeTime = t
-	}
-
-	if raw.PiSleep != "" {
-		t, err := time.Parse(timeOnly, raw.PiSleep)
-		if err != nil {
-			return nil, errors.New("invalid Pi sleep time")
-		}
-		conf.PiSleepTime = t
-	}
-
-	if err := conf.Validate(); err != nil {
+	w, err := window.New(raw.PiWakeUp, raw.PiSleep, loc.Latitude, loc.Longitude)
+	if err != nil {
 		return nil, err
 	}
+	conf.OnWindow = w
 
 	return conf, nil
 }
