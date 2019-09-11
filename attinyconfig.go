@@ -19,12 +19,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
-	"io/ioutil"
-	"os"
-
-	"github.com/TheCacophonyProject/attiny-controller/location"
+	"github.com/TheCacophonyProject/go-config"
 	"github.com/TheCacophonyProject/window"
-	yaml "gopkg.in/yaml.v2"
 )
 
 type AttinyConfig struct {
@@ -32,53 +28,44 @@ type AttinyConfig struct {
 	Voltages Voltages
 }
 
-type rawConfig struct {
-	PiWakeUp string   `yaml:"pi-wake-time"`
-	PiSleep  string   `yaml:"pi-sleep-time"`
-	Voltages Voltages `yaml:"voltages"`
-}
-
 type Voltages struct {
-	Enable      bool   `yaml:"enable"`       // Enable reading voltage through ATtiny
-	NoBattery   uint16 `yaml:"no-battery"`   // If voltage reading is less than this it is not powered by a battery
-	LowBattery  uint16 `yaml:"low-battery"`  // Voltage of a low battery
-	FullBattery uint16 `yaml:"full-battery"` // Voltage of a full battery
+	Enable      bool   // Enable reading voltage through ATtiny
+	NoBattery   uint16 // If voltage reading is less than this it is not powered by a battery
+	LowBattery  uint16 // Voltage of a low battery
+	FullBattery uint16 // Voltage of a full battery
 }
 
-func ParseAttinyConfigFile(filename, locationFile string) (*AttinyConfig, error) {
-	buf, err := ioutil.ReadFile(filename)
+func ParseConfig(configDir string) (*AttinyConfig, error) {
+	rawConfig, err := config.New(configDir)
 	if err != nil {
 		return nil, err
 	}
 
-	locationBuf, err := ioutil.ReadFile(locationFile)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
+	var battery config.Battery
+	rawConfig.Unmarshal("battery", &battery)
 
-	loc, err := location.New(locationBuf)
+	windows := config.DefaultWindows
+	rawConfig.Unmarshal(config.WindowsKey, windows)
+
+	location := config.DefaultLocation
+	rawConfig.Unmarshal(config.LocationKey, location)
+
+	w, err := window.New(
+		windows.PowerOn,
+		windows.PowerOff,
+		float64(location.Latitude),
+		float64(location.Longitude))
 	if err != nil {
 		return nil, err
 	}
 
-	return ParseAttinyConfig(buf, loc)
-}
-
-func ParseAttinyConfig(buf []byte, loc *location.LocationConfig) (*AttinyConfig, error) {
-	raw := rawConfig{}
-	if err := yaml.Unmarshal(buf, &raw); err != nil {
-		return nil, err
-	}
-
-	conf := &AttinyConfig{
-		Voltages: raw.Voltages,
-	}
-
-	w, err := window.New(raw.PiWakeUp, raw.PiSleep, loc.Latitude, loc.Longitude)
-	if err != nil {
-		return nil, err
-	}
-	conf.OnWindow = w
-
-	return conf, nil
+	return &AttinyConfig{
+		OnWindow: w,
+		Voltages: Voltages{
+			Enable:      battery.EnableVoltageReadings,
+			NoBattery:   battery.NoBattery,
+			LowBattery:  battery.LowBattery,
+			FullBattery: battery.FullBattery,
+		},
+	}, nil
 }

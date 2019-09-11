@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TheCacophonyProject/go-config"
 	arg "github.com/alexflint/go-arg"
 	"golang.org/x/sys/unix"
 )
@@ -63,8 +64,7 @@ func setStayOnUntil(newTime time.Time) error {
 }
 
 type Args struct {
-	ConfigFile         string `arg:"-c,--config" help:"path to configuration file"`
-	LocationFile       string `arg:"-l,--location" help:"path to location file"`
+	ConfigDir          string `arg:"-c,--config" help:"configuration folder"`
 	SkipWait           bool   `arg:"-s,--skip-wait" help:"will not wait for the date to update"`
 	Timestamps         bool   `arg:"-t,--timestamps" help:"include timestamps in log output"`
 	SkipSystemShutdown bool   `arg:"--skip-system-shutdown" help:"don't shut down operating system when powering down"`
@@ -76,8 +76,7 @@ func (Args) Version() string {
 
 func procArgs() Args {
 	args := Args{
-		ConfigFile:   "/etc/cacophony/attiny.yaml",
-		LocationFile: "/etc/cacophony/location.yaml",
+		ConfigDir: config.DefaultConfigDir,
 	}
 	arg.MustParse(&args)
 	return args
@@ -101,7 +100,7 @@ func runMain() error {
 
 	log.Printf("running version: %s", version)
 
-	conf, err := ParseAttinyConfigFile(args.ConfigFile, args.LocationFile)
+	conf, err := ParseConfig(args.ConfigDir)
 	if err != nil {
 		return err
 	}
