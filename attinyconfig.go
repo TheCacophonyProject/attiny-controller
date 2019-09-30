@@ -25,14 +25,7 @@ import (
 
 type AttinyConfig struct {
 	OnWindow *window.Window
-	Voltages Voltages
-}
-
-type Voltages struct {
-	Enable      bool   // Enable reading voltage through ATtiny
-	NoBattery   uint16 // If voltage reading is less than this it is not powered by a battery
-	LowBattery  uint16 // Voltage of a low battery
-	FullBattery uint16 // Voltage of a full battery
+	Battery  config.Battery
 }
 
 func ParseConfig(configDir string) (*AttinyConfig, error) {
@@ -41,14 +34,18 @@ func ParseConfig(configDir string) (*AttinyConfig, error) {
 		return nil, err
 	}
 
-	var battery config.Battery
-	rawConfig.Unmarshal("battery", &battery)
+	windows := config.DefaultWindows()
+	if err := rawConfig.Unmarshal(config.WindowsKey, windows); err != nil {
+		return nil, err
+	}
 
-	windows := config.DefaultWindows
-	rawConfig.Unmarshal(config.WindowsKey, windows)
-
-	location := config.DefaultLocation
+	location := config.DefaultWindowLocation()
 	rawConfig.Unmarshal(config.LocationKey, location)
+
+	var battery config.Battery
+	if err := rawConfig.Unmarshal(config.BatteryKey, battery); err != nil {
+		return nil, err
+	}
 
 	w, err := window.New(
 		windows.PowerOn,
@@ -61,11 +58,6 @@ func ParseConfig(configDir string) (*AttinyConfig, error) {
 
 	return &AttinyConfig{
 		OnWindow: w,
-		Voltages: Voltages{
-			Enable:      battery.EnableVoltageReadings,
-			NoBattery:   battery.NoBattery,
-			LowBattery:  battery.LowBattery,
-			FullBattery: battery.FullBattery,
-		},
+		Battery:  battery,
 	}, nil
 }

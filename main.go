@@ -106,7 +106,7 @@ func runMain() error {
 	}
 
 	log.Println("connecting to attiny")
-	attiny, err := connectATtiny(conf.Voltages)
+	attiny, err := connectATtiny(conf.Battery)
 	if err != nil {
 		return err
 	}
