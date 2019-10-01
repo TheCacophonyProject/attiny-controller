@@ -8,6 +8,5 @@ require (
 	github.com/alexflint/go-arg v1.1.0
 	github.com/godbus/dbus v4.1.0+incompatible
 	golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
-	gopkg.in/yaml.v2 v2.2.2
 	periph.io/x/periph v3.1.0+incompatible
 )
