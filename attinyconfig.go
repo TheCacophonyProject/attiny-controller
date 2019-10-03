@@ -35,15 +35,15 @@ func ParseConfig(configDir string) (*AttinyConfig, error) {
 	}
 
 	windows := config.DefaultWindows()
-	if err := rawConfig.Unmarshal(config.WindowsKey, windows); err != nil {
+	if err := rawConfig.Unmarshal(config.WindowsKey, &windows); err != nil {
 		return nil, err
 	}
 
 	location := config.DefaultWindowLocation()
-	rawConfig.Unmarshal(config.LocationKey, location)
+	rawConfig.Unmarshal(config.LocationKey, &location)
 
 	var battery config.Battery
-	if err := rawConfig.Unmarshal(config.BatteryKey, battery); err != nil {
+	if err := rawConfig.Unmarshal(config.BatteryKey, &battery); err != nil {
 		return nil, err
 	}
 
