@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TheCacophonyProject/go-config"
 	"periph.io/x/periph/conn/i2c"
 	"periph.io/x/periph/conn/i2c/i2creg"
 	"periph.io/x/periph/host"
@@ -63,7 +64,7 @@ const (
 // connectATtiny sets up a i2c device for talking to the ATtiny and
 // returns a wrapper for it. If no ATtiny was detected (nil, nil) will
 // be returned.
-func connectATtiny(voltages Voltages) (*attiny, error) {
+func connectATtiny(battery config.Battery) (*attiny, error) {
 	if _, err := host.Init(); err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func connectATtiny(voltages Voltages) (*attiny, error) {
 		return nil, nil
 	}
 
-	a := &attiny{dev: dev, voltages: voltages}
+	a := &attiny{dev: dev, battery: battery}
 	if err := a.getVersion(); err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ type attiny struct {
 	dev     *i2c.Dev
 	version uint8
 
-	voltages         Voltages
+	battery          config.Battery
 	checkedOnBattery bool
 	onBattery        bool
 
@@ -203,7 +204,7 @@ func (a *attiny) checkIsOnBattery() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	a.onBattery = batVal > a.voltages.NoBattery
+	a.onBattery = batVal > a.battery.NoBattery
 	a.checkedOnBattery = true
 	return a.onBattery, nil
 }
@@ -213,7 +214,7 @@ func (a *attiny) readBatteryValue() (uint16, error) {
 	if err := a.versionCheck(4); err != nil {
 		return 0, err
 	}
-	if !a.voltages.Enable {
+	if !a.battery.EnableVoltageReadings {
 		return 0, nil
 	}
 	l := make([]byte, 1)
