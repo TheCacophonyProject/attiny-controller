@@ -22,10 +22,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
 	"time"
+
+	linuxproc "github.com/c9s/goprocinfo/linux"
 
 	"github.com/TheCacophonyProject/go-config"
 	arg "github.com/alexflint/go-arg"
@@ -135,6 +138,8 @@ func runMain() error {
 		log.Println("failed to update wifi state:", err)
 	}
 
+	go batteryLoop(attiny)
+
 	if batSense, err := attiny.readBatteryValue(); err != nil {
 		log.Println(err.Error())
 	} else {
@@ -192,6 +197,66 @@ func updateWatchdogTimer(a *attiny) {
 		}
 		time.Sleep(time.Minute)
 	}
+}
+
+func batteryLoop(a *attiny) error {
+	for {
+		log.Println("checking CPU usage")
+
+		stat1, err := linuxproc.ReadStat("/proc/stat")
+		if err != nil {
+			log.Println("cpu stat read fail")
+		}
+
+		time.Sleep(3 * time.Second)
+
+		stat2, err := linuxproc.ReadStat("/proc/stat")
+		if err != nil {
+			log.Println("cpu stat read fail")
+		}
+
+		var cpuTotal float64
+		for i := 0; i < len(stat1.CPUStats); i++ {
+			cpu1 := stat1.CPUStats[i]
+			cpu2 := stat2.CPUStats[i]
+
+			total1, idle1 := getTotalAndIdleTicks(&cpu1)
+			total2, idle2 := getTotalAndIdleTicks(&cpu2)
+
+			totalDiff := total2 - total1
+			idleDiff := idle2 - idle1
+			cpu := float64(totalDiff-idleDiff) / float64(totalDiff)
+			cpuTotal += cpu
+		}
+		cpuTotal = cpuTotal / float64(len(stat1.CPUStats))
+		nowStr := time.Now().Format("2006-01-02T15:04:05")
+		batteryVal, err := a.readBatteryValue()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		dataStr := fmt.Sprintf("%s, %f, %d\n", nowStr, cpuTotal, batteryVal)
+		if err := writeToFile(dataStr); err != nil {
+			log.Println(err)
+		}
+		time.Sleep(10 * time.Minute)
+	}
+}
+
+func writeToFile(text string) error {
+	f, err := os.OpenFile("/home/pi/battery.csv", os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(text)
+	return err
+}
+
+func getTotalAndIdleTicks(c *linuxproc.CPUStat) (total, idle uint64) {
+	idle = c.IOWait + c.Idle
+	total = idle + c.User + c.Nice + c.System + c.IRQ + c.SoftIRQ + c.Steal
+	return total, idle
 }
 
 func shutdown() error {
