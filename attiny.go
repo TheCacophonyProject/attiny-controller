@@ -214,11 +214,9 @@ func (a *attiny) readBatteryValue() (uint16, error) {
 	if err := a.versionCheck(4); err != nil {
 		return 0, err
 	}
-	/*
-		if !a.battery.EnableVoltageReadings {
-			return 0, nil
-		}
-	*/
+	if !a.battery.EnableVoltageReadings {
+		return 0, nil
+	}
 	l := make([]byte, 1)
 	h := make([]byte, 1)
 	if err := a.tx(l, []byte{batteryVoltageLoReg}); err != nil {

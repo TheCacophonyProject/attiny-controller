@@ -42,7 +42,7 @@ func ParseConfig(configDir string) (*AttinyConfig, error) {
 	location := config.DefaultWindowLocation()
 	rawConfig.Unmarshal(config.LocationKey, &location)
 
-	var battery config.Battery
+	battery := config.DefaultBattery()
 	if err := rawConfig.Unmarshal(config.BatteryKey, &battery); err != nil {
 		return nil, err
 	}
