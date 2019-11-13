@@ -110,7 +110,8 @@ func runMain() error {
 
 	conf, err := ParseConfig(args.ConfigDir)
 	if err != nil {
-		return err
+		log.Printf("error parsing config: %s\nwill try to just ping watchdog", err)
+		return justPingWatchdog()
 	}
 
 	log.Println("connecting to attiny")
@@ -268,5 +269,19 @@ func shutdown() error {
 	if err != nil {
 		return fmt.Errorf("poweroff failed: %v\n%s", err, output)
 	}
+	return nil
+}
+
+func justPingWatchdog() error {
+	attiny, err := connectATtiny(config.Battery{})
+	if err != nil {
+		return err
+	}
+	if attiny == nil {
+		log.Println("attiny not present")
+		return nil
+	}
+	log.Println("connected to attiny")
+	go updateWatchdogTimer(attiny)
 	return nil
 }
