@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -29,12 +30,18 @@ import (
 
 	"github.com/TheCacophonyProject/go-config"
 	arg "github.com/alexflint/go-arg"
+	linuxproc "github.com/c9s/goprocinfo/linux"
 	"golang.org/x/sys/unix"
 )
 
 // How long to wait before checking the recording window. This
 // gives time to do something with the device before it turns off.
-const initialGracePeriod = 20 * time.Minute
+const (
+	initialGracePeriod     = 20 * time.Minute
+	batteryCSVFile         = "/var/log/battery.csv"
+	batteryReadingInterval = 10 * time.Minute
+	systemStatFile         = "/proc/stat"
+)
 
 var (
 	version = "<not set>"
@@ -136,10 +143,8 @@ func runMain() error {
 		log.Println("failed to update wifi state:", err)
 	}
 
-	if batSense, err := attiny.readBatteryValue(); err != nil {
-		log.Println(err.Error())
-	} else {
-		log.Printf("battery sense reading: %d\n", batSense)
+	if conf.Battery.EnableVoltageReadings {
+		go batteryLoop(attiny)
 	}
 
 	log.Printf("on window: %s", conf.OnWindow)
@@ -193,6 +198,69 @@ func updateWatchdogTimer(a *attiny) {
 		}
 		time.Sleep(time.Minute)
 	}
+}
+
+func batteryLoop(a *attiny) {
+	for {
+		cpu, err := cpuUsage()
+		if err != nil {
+			log.Printf("error with getting cpu usage: %s", err)
+			return
+		}
+		batteryVal, err := a.readBatteryValue()
+		nowStr := time.Now().Format("2006-01-02 15:04:05")
+		dataStr := fmt.Sprintf("%s, %f, %d\n", nowStr, cpu, batteryVal)
+		if err := appendToFile(dataStr, batteryCSVFile); err != nil {
+			log.Printf("error logging battery value: %s", err)
+			return
+		}
+		time.Sleep(batteryReadingInterval)
+	}
+}
+
+func cpuUsage() (float64, error) {
+	stat1, err := linuxproc.ReadStat(systemStatFile)
+	if err != nil {
+		return 0, err
+	}
+	time.Sleep(3 * time.Second)
+	stat2, err := linuxproc.ReadStat(systemStatFile)
+	if err != nil {
+		return 0, err
+	}
+	if len(stat1.CPUStats) != len(stat1.CPUStats) {
+		return 0, errors.New("bad stat file readings")
+	}
+	var cpuTotal float64
+	for i := 0; i < len(stat1.CPUStats); i++ {
+		cpu1 := stat1.CPUStats[i]
+		cpu2 := stat2.CPUStats[i]
+
+		total1, idle1 := getTotalAndIdleTicks(&cpu1)
+		total2, idle2 := getTotalAndIdleTicks(&cpu2)
+
+		totalDiff := total2 - total1
+		idleDiff := idle2 - idle1
+		cpu := float64(totalDiff-idleDiff) / float64(totalDiff)
+		cpuTotal += cpu
+	}
+	return cpuTotal / float64(len(stat1.CPUStats)), nil
+}
+
+func appendToFile(text string, file string) error {
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(text)
+	return err
+}
+
+func getTotalAndIdleTicks(c *linuxproc.CPUStat) (total, idle uint64) {
+	idle = c.IOWait + c.Idle
+	total = idle + c.User + c.Nice + c.System + c.IRQ + c.SoftIRQ + c.Steal
+	return total, idle
 }
 
 func shutdown() error {
