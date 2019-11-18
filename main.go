@@ -28,10 +28,9 @@ import (
 	"sync"
 	"time"
 
-	linuxproc "github.com/c9s/goprocinfo/linux"
-
 	"github.com/TheCacophonyProject/go-config"
 	arg "github.com/alexflint/go-arg"
+	linuxproc "github.com/c9s/goprocinfo/linux"
 	"golang.org/x/sys/unix"
 )
 
@@ -144,7 +143,9 @@ func runMain() error {
 		log.Println("failed to update wifi state:", err)
 	}
 
-	go batteryLoop(attiny)
+	if conf.Battery.EnableVoltageReadings {
+		go batteryLoop(attiny)
+	}
 
 	log.Printf("on window: %s", conf.OnWindow)
 
@@ -207,7 +208,6 @@ func batteryLoop(a *attiny) {
 			return
 		}
 		batteryVal, err := a.readBatteryValue()
-		log.Printf("battery reading: %d", batteryVal)
 		nowStr := time.Now().Format("2006-01-02 15:04:05")
 		dataStr := fmt.Sprintf("%s, %f, %d\n", nowStr, cpu, batteryVal)
 		if err := appendToFile(dataStr, batteryCSVFile); err != nil {
