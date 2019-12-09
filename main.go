@@ -64,9 +64,11 @@ func setStayOnUntil(newTime time.Time) error {
 		return errors.New("can not delay over 12 hours")
 	}
 	mu.Lock()
-	stayOnUntil = newTime
+	if stayOnUntil.Before(newTime) {
+		stayOnUntil = newTime
+	}
 	mu.Unlock()
-	log.Println("staying on until", newTime.Format(time.UnixDate))
+	log.Println("staying on until", stayOnUntil.Format(time.UnixDate))
 	return nil
 }
 
