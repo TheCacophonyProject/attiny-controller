@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TheCacophonyProject/event-reporter/v3/eventclient"
 	"github.com/TheCacophonyProject/go-config"
 	arg "github.com/alexflint/go-arg"
 	linuxproc "github.com/c9s/goprocinfo/linux"
@@ -166,7 +167,17 @@ func runMain() error {
 			untilEnd := conf.OnWindow.UntilEnd()
 			log.Printf("%s until on window ends", untilEnd)
 			log.Println("sleeping until end of window")
-			time.Sleep(untilEnd)
+			time.Sleep(untilEnd - 3*time.Minute)
+			log.Println("making daytime-power-off event")
+			eventclient.AddEvent(eventclient.Event{
+				Timestamp: time.Now(),
+				Type:      "daytime-power-off",
+				Details: map[string]interface{}{
+					"powerOnAt": conf.OnWindow.NextStart(),
+				},
+			})
+			eventclient.UploadEvents() //Try to upload events before shutdown
+			time.Sleep(3 * time.Minute)
 		} else {
 			minutesUntilActive := int(conf.OnWindow.Until().Minutes())
 			log.Printf("minutes until active %d", minutesUntilActive)
