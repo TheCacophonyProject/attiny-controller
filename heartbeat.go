@@ -66,7 +66,6 @@ func heartBeatLoop(window *window.Window) {
 
 func NewHeartbeat(window *window.Window) (*Heartbeat, error) {
 	var nextEnd time.Time
-
 	if !window.NoWindow {
 		nextEnd = window.NextEnd()
 	}
