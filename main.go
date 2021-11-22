@@ -141,6 +141,8 @@ func runMain() error {
 	}
 	log.Println("started D-Bus service")
 
+	go heartBeatLoop(conf.OnWindow)
+
 	go updateWatchdogTimer(attiny)
 	if err := attiny.UpdateWifiState(); err != nil {
 		log.Println("failed to update wifi state:", err)
@@ -176,6 +178,7 @@ func runMain() error {
 					"powerOnAt": conf.OnWindow.NextStart(),
 				},
 			})
+			sendFinalHeartBeat(conf.OnWindow)
 			eventclient.UploadEvents() //Try to upload events before shutdown
 			time.Sleep(3 * time.Minute)
 		} else {
