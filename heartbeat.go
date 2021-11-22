@@ -80,7 +80,7 @@ func NewHeartbeat(window *window.Window) (*Heartbeat, error) {
 	return h, nil
 }
 
-//updates next heart beat time, returns if this was the final beat
+//updates next heart beat time, returns true if this was the final event
 func (h *Heartbeat) updateNextBeat() bool {
 	h.nextEvent = time.Now().Add(interval)
 	if !h.window.NoWindow && h.nextEvent.After(h.end.Add(-time.Hour)) {
