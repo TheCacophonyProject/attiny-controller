@@ -22,18 +22,22 @@ type Heartbeat struct {
 }
 
 func heartBeatLoop(window *window.Window) {
-	if !window.Active() {
-		log.Printf("After active window not sending heart beat")
-		return
-	}
 
 	hb, err := NewHeartbeat(window)
 	if err != nil {
 		log.Printf("Error starting up heart beat %v", err)
 		return
 	}
-	log.Printf("Sending initial heart beat in %v", heartBeatDelay)
-	time.Sleep(heartBeatDelay)
+	initialDelay := heartBeatDelay
+
+	if !window.Active() {
+		until := window.Until()
+		if until > initialDelay {
+			initialDelay = until
+		}
+	}
+	log.Printf("Sending initial heart beat in %v", initialDelay)
+	time.Sleep(initialDelay)
 
 	for {
 		attempt := 0

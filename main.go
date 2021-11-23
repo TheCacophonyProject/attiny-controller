@@ -142,7 +142,6 @@ func runMain() error {
 	log.Println("started D-Bus service")
 
 	go heartBeatLoop(conf.OnWindow)
-
 	go updateWatchdogTimer(attiny)
 	if err := attiny.UpdateWifiState(); err != nil {
 		log.Println("failed to update wifi state:", err)
@@ -155,7 +154,7 @@ func runMain() error {
 	log.Printf("on window: %s", conf.OnWindow)
 
 	if conf.OnWindow.NoWindow {
-		log.Printf("no window active so pinging watchdog only")
+		log.Printf("no window so pinging watchdog only")
 		runtime.Goexit()
 	}
 
