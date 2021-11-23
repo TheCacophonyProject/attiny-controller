@@ -52,7 +52,7 @@ func heartBeatLoop(window *window.Window) {
 		}
 
 		nextEventIn := hb.nextEvent.Sub(time.Now())
-		if nextEventIn >= 1*time.Hour {
+		if nextEventIn >= 2*time.Hour {
 			nextEventIn = nextEventIn - 1*time.Hour
 		} else {
 			// 5 minutes to give a bit of leeway
