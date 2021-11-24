@@ -38,10 +38,16 @@ func heartBeatLoop(window *window.Window) {
 	}
 	log.Printf("Sending initial heart beat in %v", initialDelay)
 	time.Sleep(initialDelay)
-
+	penultimate := true
+	done := false
 	for {
 		attempt := 0
-		done := hb.updateNextBeat()
+		if !penultimate {
+			penultimate = hb.updateNextBeat()
+		} else {
+			done = true
+		}
+
 		for attempt < maxAttempts {
 			err := sendHeartbeat(hb.api, hb.nextEvent)
 			if err == nil {
@@ -51,12 +57,12 @@ func heartBeatLoop(window *window.Window) {
 			time.Sleep(attemptDelay)
 		}
 		if done {
-			log.Printf("Sent final heartbeat")
+			log.Printf("Sent penultimate heartbeat")
 			return
 		}
 
 		nextEventIn := hb.nextEvent.Sub(time.Now())
-		if nextEventIn >= 2*time.Hour {
+		if !penultimate && nextEventIn >= 2*time.Hour {
 			nextEventIn = nextEventIn - 1*time.Hour
 		} else {
 			// 5 minutes to give a bit of leeway
@@ -84,11 +90,12 @@ func NewHeartbeat(window *window.Window) (*Heartbeat, error) {
 	return h, nil
 }
 
-//updates next heart beat time, returns true if this was the final event
+//updates next heart beat time, returns true if will be the final event
 func (h *Heartbeat) updateNextBeat() bool {
 	h.nextEvent = time.Now().Add(interval)
 	if !h.window.NoWindow && h.nextEvent.After(h.end.Add(-time.Hour)) {
-		h.nextEvent = h.end
+		// always wwant an event 1 hour before end
+		h.nextEvent = h.end.Add(-time.Hour)
 		return true
 	}
 	return false
