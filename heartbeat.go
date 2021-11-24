@@ -15,19 +15,40 @@ const attemptDelay = 5 * time.Second
 const heartBeatDelay = 30 * time.Minute
 
 type Heartbeat struct {
-	api       *api.CacophonyAPI
-	window    *window.Window
-	nextEvent time.Time
-	end       time.Time
+	api         *api.CacophonyAPI
+	window      *window.Window
+	nextEvent   time.Time
+	end         time.Time
+	penultimate bool
 }
 
-func heartBeatLoop(window *window.Window) {
+// Used to test
+type Clock interface {
+	Sleep(d time.Duration)
+	Now() time.Time
+}
 
+type HeartBeatClock struct {
+}
+
+func (h *HeartBeatClock) Sleep(d time.Duration) {
+	time.Sleep(d)
+}
+func (h *HeartBeatClock) Now() time.Time {
+	return time.Now()
+}
+
+var clock Clock = &HeartBeatClock{}
+
+func heartBeatLoop(window *window.Window) {
 	hb, err := NewHeartbeat(window)
 	if err != nil {
 		log.Printf("Error starting up heart beat %v", err)
 		return
 	}
+	sendBeats(hb, window)
+}
+func sendBeats(hb *Heartbeat, window *window.Window) {
 	initialDelay := heartBeatDelay
 
 	if !window.Active() {
@@ -37,16 +58,10 @@ func heartBeatLoop(window *window.Window) {
 		}
 	}
 	log.Printf("Sending initial heart beat in %v", initialDelay)
-	time.Sleep(initialDelay)
-	penultimate := true
-	done := false
+	clock.Sleep(initialDelay)
 	for {
 		attempt := 0
-		if !penultimate {
-			penultimate = hb.updateNextBeat()
-		} else {
-			done = true
-		}
+		done := hb.updateNextBeat()
 
 		for attempt < maxAttempts {
 			err := sendHeartbeat(hb.api, hb.nextEvent)
@@ -54,23 +69,23 @@ func heartBeatLoop(window *window.Window) {
 				break
 			}
 			log.Printf("Error sending heart beat sleeping and trying again: %v", err)
-			time.Sleep(attemptDelay)
+			clock.Sleep(attemptDelay)
 		}
 		if done {
 			log.Printf("Sent penultimate heartbeat")
 			return
 		}
 
-		nextEventIn := hb.nextEvent.Sub(time.Now())
-		if !penultimate && nextEventIn >= 2*time.Hour {
+		nextEventIn := hb.nextEvent.Sub(clock.Now())
+		if !hb.penultimate && nextEventIn >= 2*time.Hour {
 			nextEventIn = nextEventIn - 1*time.Hour
 		} else {
 			// 5 minutes to give a bit of leeway
 			nextEventIn = nextEventIn - 5*time.Minute
 
 		}
-		log.Printf("Heartbeat sleeping until %v", time.Now().Add(nextEventIn))
-		time.Sleep(nextEventIn)
+		log.Printf("Heartbeat sleeping until %v", clock.Now().Add(nextEventIn))
+		clock.Sleep(nextEventIn)
 	}
 }
 
@@ -83,29 +98,39 @@ func NewHeartbeat(window *window.Window) (*Heartbeat, error) {
 	apiClient, err := api.New()
 	if err != nil {
 		log.Printf("Error connecting to api %v", apiClient)
-		return nil, err
 	}
 
 	h := &Heartbeat{api: apiClient, end: nextEnd, window: window}
-	return h, nil
+	return h, err
 }
 
 //updates next heart beat time, returns true if will be the final event
 func (h *Heartbeat) updateNextBeat() bool {
-	h.nextEvent = time.Now().Add(interval)
+	if h.penultimate {
+		h.nextEvent = h.end
+		return true
+	}
+	h.nextEvent = clock.Now().Add(interval)
 	if !h.window.NoWindow && h.nextEvent.After(h.end.Add(-time.Hour)) {
 		// always wwant an event 1 hour before end
 		h.nextEvent = h.end.Add(-time.Hour)
-		return true
+		if clock.Now().After(h.nextEvent) {
+			h.nextEvent = h.end
+			return true
+		}
+		h.penultimate = true
 	}
 	return false
 }
 
 func sendHeartbeat(api *api.CacophonyAPI, nextBeat time.Time) error {
+	if api == nil {
+		return nil
+	}
 	_, err := api.Heartbeat(nextBeat)
 	if err == nil {
-		log.Printf("Sent heart, valid until %v", nextBeat)
 	}
+	log.Printf("Sent heart, valid until %v", nextBeat)
 	return err
 }
 
