@@ -112,9 +112,10 @@ func (h *Heartbeat) updateNextBeat() bool {
 	}
 	h.nextEvent = clock.Now().Add(interval)
 	if !h.window.NoWindow && h.nextEvent.After(h.end.Add(-time.Hour)) {
-		// always wwant an event 1 hour before end
+		// always want an event 1 hour before end if possible
 		h.nextEvent = h.end.Add(-time.Hour)
 		if clock.Now().After(h.nextEvent) {
+			// rare case of very short window
 			h.nextEvent = h.end
 			return true
 		}

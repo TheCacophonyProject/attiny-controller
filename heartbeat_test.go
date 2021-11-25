@@ -28,11 +28,11 @@ func (h *TestClock) Sleep(d time.Duration) {
 	// nextBeat gets updated after sleep skip first
 	if h.sleepCount > 0 {
 		if h.sleepCount == len(h.expectedSleeps)-1 {
-			// penutimate sleep is only valid for 5 minutes after sleep
+			// penultimate event is only valid for 5 minutes after sleep
 			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(5*time.Minute).Format(dateFormat), h.hb.nextEvent.Format(dateFormat))
 
 		} else {
-			assert.Equal(h.t, h.expectedSleeps[h.sleepCount-1].Add(4*time.Hour).Format(dateFormat), h.hb.nextEvent.Format(dateFormat))
+			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(1*time.Hour).Format(dateFormat), h.hb.nextEvent.Format(dateFormat))
 		}
 	}
 	h.now = h.now.Add(d)
@@ -53,11 +53,23 @@ func TestSmallWindow(t *testing.T) {
 	require.NoError(t, err)
 	heartBeatTestLoop(w, clock)
 }
+func TestShortDelay(t *testing.T) {
+	clock := &TestClock{now: time.Now(), t: t}
+	w, err := window.New(clock.Now().Add(10*time.Minute).Format(dateFormat), clock.Now().Add(4*time.Hour).Format(dateFormat), 0, 0)
+	sleeps := make([]time.Time, 2, 2)
+	sleeps[0] = clock.now.Add(30 * time.Minute)
+	sleeps[1] = w.NextEnd().Add(-65 * time.Minute)
+
+	clock.expectedSleeps = sleeps
+	require.NoError(t, err)
+	heartBeatTestLoop(w, clock)
+}
 
 func TestLongDelay(t *testing.T) {
 	clock := &TestClock{now: time.Now(), t: t}
 	w, err := window.New(clock.Now().Add(time.Hour).Format(dateFormat), clock.Now().Add(4*time.Hour).Format(dateFormat), 0, 0)
 	sleeps := make([]time.Time, 2, 2)
+	// expect delay until window starts if further than 30 minutes
 	sleeps[0] = clock.Now().Add(w.Until())
 	sleeps[1] = w.NextEnd().Add(-65 * time.Minute)
 
@@ -86,8 +98,7 @@ func heartBeatTestLoop(window *window.Window, timer *TestClock) {
 	hb, _ := NewHeartbeat(window)
 	timer.hb = hb
 	sendBeats(hb, window)
-	// assert last beat is at end
 	assert.Equal(timer.t, timer.sleepCount, len(timer.expectedSleeps), "Missing sleep events")
-
+	// assert last beat is at end
 	assert.Equal(timer.t, window.NextEnd().Format(dateFormat), hb.nextEvent.Format(dateFormat))
 }
