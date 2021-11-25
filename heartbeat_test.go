@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheCacophonyProject/window"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TheCacophonyProject/window"
 )
 
 const dateFormat = "15:04"
@@ -29,10 +30,10 @@ func (h *TestClock) Sleep(d time.Duration) {
 	if h.sleepCount > 0 {
 		if h.sleepCount == len(h.expectedSleeps)-1 {
 			// penultimate event is only valid for 5 minutes after sleep
-			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(5*time.Minute).Format(dateFormat), h.hb.nextEvent.Format(dateFormat))
+			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(5*time.Minute).Format(dateFormat), h.hb.validUntil.Format(dateFormat))
 
 		} else {
-			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(1*time.Hour).Format(dateFormat), h.hb.nextEvent.Format(dateFormat))
+			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(1*time.Hour).Format(dateFormat), h.hb.validUntil.Format(dateFormat))
 		}
 	}
 	h.now = h.now.Add(d)
@@ -100,5 +101,5 @@ func heartBeatTestLoop(window *window.Window, timer *TestClock) {
 	sendBeats(hb, window)
 	assert.Equal(timer.t, timer.sleepCount, len(timer.expectedSleeps), "Missing sleep events")
 	// assert last beat is at end
-	assert.Equal(timer.t, window.NextEnd().Format(dateFormat), hb.nextEvent.Format(dateFormat))
+	assert.Equal(timer.t, window.NextEnd().Format(dateFormat), hb.validUntil.Format(dateFormat))
 }

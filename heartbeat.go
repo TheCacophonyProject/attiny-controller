@@ -17,7 +17,7 @@ const heartBeatDelay = 30 * time.Minute
 type Heartbeat struct {
 	api         *api.CacophonyAPI
 	window      *window.Window
-	nextEvent   time.Time
+	validUntil  time.Time
 	end         time.Time
 	penultimate bool
 }
@@ -64,7 +64,7 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 		done := hb.updateNextBeat()
 
 		for attempt < maxAttempts {
-			err := sendHeartbeat(hb.api, hb.nextEvent)
+			err := sendHeartbeat(hb.api, hb.validUntil)
 			if err == nil {
 				break
 			}
@@ -76,7 +76,7 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 			return
 		}
 
-		nextEventIn := hb.nextEvent.Sub(clock.Now())
+		nextEventIn := hb.validUntil.Sub(clock.Now())
 		if !hb.penultimate && nextEventIn >= 2*time.Hour {
 			nextEventIn = nextEventIn - 1*time.Hour
 		} else {
@@ -107,16 +107,16 @@ func NewHeartbeat(window *window.Window) (*Heartbeat, error) {
 //updates next heart beat time, returns true if will be the final event
 func (h *Heartbeat) updateNextBeat() bool {
 	if h.penultimate {
-		h.nextEvent = h.end
+		h.validUntil = h.end
 		return true
 	}
-	h.nextEvent = clock.Now().Add(interval)
-	if !h.window.NoWindow && h.nextEvent.After(h.end.Add(-time.Hour)) {
+	h.validUntil = clock.Now().Add(interval)
+	if !h.window.NoWindow && h.validUntil.After(h.end.Add(-time.Hour)) {
 		// always want an event 1 hour before end if possible
-		h.nextEvent = h.end.Add(-time.Hour)
-		if clock.Now().After(h.nextEvent) {
+		h.validUntil = h.end.Add(-time.Hour)
+		if clock.Now().After(h.validUntil) {
 			// rare case of very short window
-			h.nextEvent = h.end
+			h.validUntil = h.end
 			return true
 		}
 		h.penultimate = true
