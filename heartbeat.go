@@ -5,14 +5,19 @@ import (
 	"time"
 
 	api "github.com/TheCacophonyProject/go-api"
+	"github.com/TheCacophonyProject/modemd/connrequester"
 	"github.com/TheCacophonyProject/window"
 )
 
-const interval = 4 * time.Hour
-const maxAttempts = 3
-const attemptDelay = 5 * time.Second
+const (
+	heartBeatDelay = 30 * time.Minute
+	interval       = 4 * time.Hour
+	attemptDelay   = 5 * time.Second
 
-const heartBeatDelay = 30 * time.Minute
+	connTimeout       = time.Minute * 2
+	connRetryInterval = time.Minute * 1
+	connMaxRetries    = 1
+)
 
 type Heartbeat struct {
 	api         *api.CacophonyAPI
@@ -20,6 +25,7 @@ type Heartbeat struct {
 	validUntil  time.Time
 	end         time.Time
 	penultimate bool
+	MaxAttempts int
 }
 
 // Used to test
@@ -41,11 +47,7 @@ func (h *HeartBeatClock) Now() time.Time {
 var clock Clock = &HeartBeatClock{}
 
 func heartBeatLoop(window *window.Window) {
-	hb, err := NewHeartbeat(window)
-	if err != nil {
-		log.Printf("Error starting up heart beat %v", err)
-		return
-	}
+	hb := NewHeartbeat(window)
 	sendBeats(hb, window)
 }
 func sendBeats(hb *Heartbeat, window *window.Window) {
@@ -60,16 +62,10 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 	log.Printf("Sending initial heart beat in %v", initialDelay)
 	clock.Sleep(initialDelay)
 	for {
-		attempt := 0
 		done := hb.updateNextBeat()
-
-		for attempt < maxAttempts {
-			err := sendHeartbeat(hb.api, hb.validUntil)
-			if err == nil {
-				break
-			}
-			log.Printf("Error sending heart beat sleeping and trying again: %v", err)
-			clock.Sleep(attemptDelay)
+		err := sendHeartbeat(hb.validUntil, hb.MaxAttempts)
+		if err != nil {
+			log.Printf("Error sending heart beat, skipping this beat %v", err)
 		}
 		if done {
 			log.Printf("Sent penultimate heartbeat")
@@ -89,19 +85,14 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 	}
 }
 
-func NewHeartbeat(window *window.Window) (*Heartbeat, error) {
+func NewHeartbeat(window *window.Window) *Heartbeat {
 	var nextEnd time.Time
 	if !window.NoWindow {
 		nextEnd = window.NextEnd()
 	}
 
-	apiClient, err := api.New()
-	if err != nil {
-		log.Printf("Error connecting to api %v", apiClient)
-	}
-
-	h := &Heartbeat{api: apiClient, end: nextEnd, window: window}
-	return h, err
+	h := &Heartbeat{end: nextEnd, window: window, MaxAttempts: 3}
+	return h
 }
 
 //updates next heart beat time, returns true if will be the final event
@@ -124,22 +115,37 @@ func (h *Heartbeat) updateNextBeat() bool {
 	return false
 }
 
-func sendHeartbeat(api *api.CacophonyAPI, nextBeat time.Time) error {
-	if api == nil {
-		return nil
+func sendHeartbeat(nextBeat time.Time, attempts int) error {
+	cr := connrequester.NewConnectionRequester()
+	cr.Start()
+	defer cr.Stop()
+	if err := cr.WaitUntilUpLoop(connTimeout, connRetryInterval, connMaxRetries); err != nil {
+		log.Println("unable to get an internet connection. Not reporting events")
+		return err
 	}
-	_, err := api.Heartbeat(nextBeat)
-	if err == nil {
-	}
-	log.Printf("Sent heart, valid until %v", nextBeat)
-	return err
-}
 
-func sendFinalHeartBeat(window *window.Window) error {
 	apiClient, err := api.New()
 	if err != nil {
 		log.Printf("Error connecting to api %v", apiClient)
 		return err
 	}
-	return sendHeartbeat(apiClient, window.NextStart().Add(heartBeatDelay*2))
+	attempt := 0
+	for {
+		_, err = apiClient.Heartbeat(nextBeat)
+		log.Printf("Sent heart, valid until %v", nextBeat)
+		if err == nil {
+			return nil
+		}
+		attempt += 1
+		if attempt > attempts {
+			break
+		}
+		log.Printf("Error sending heart beat sleeping, trying again: %v", err)
+		clock.Sleep(attemptDelay)
+	}
+	return err
+}
+
+func sendFinalHeartBeat(window *window.Window) error {
+	return sendHeartbeat(window.NextStart().Add(heartBeatDelay*2), 3)
 }

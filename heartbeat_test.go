@@ -95,8 +95,8 @@ func TestWindow(t *testing.T) {
 
 func heartBeatTestLoop(window *window.Window, timer *TestClock) {
 	clock = timer
-	heartBeatLoop(window)
-	hb, _ := NewHeartbeat(window)
+	hb := NewHeartbeat(window)
+	hb.MaxAttempts = 1
 	timer.hb = hb
 	sendBeats(hb, window)
 	assert.Equal(timer.t, timer.sleepCount, len(timer.expectedSleeps), "Missing sleep events")
