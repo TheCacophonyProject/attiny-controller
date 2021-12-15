@@ -200,7 +200,8 @@ func runMain() error {
 						log.Fatal(err)
 					}
 				}
-			} else if !sendingHeartBeats {
+			}
+			if !sendingHeartBeats {
 				sendingHeartBeats = true
 				go heartBeatLoop(conf.OnWindow)
 			}
