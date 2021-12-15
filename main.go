@@ -140,7 +140,7 @@ func runMain() error {
 		return err
 	}
 	log.Println("started D-Bus service")
-
+	sendingHeartBeats := true
 	go heartBeatLoop(conf.OnWindow)
 	go updateWatchdogTimer(attiny)
 	if err := attiny.UpdateWifiState(); err != nil {
@@ -180,6 +180,7 @@ func runMain() error {
 			sendFinalHeartBeat(conf.OnWindow)
 			eventclient.UploadEvents() //Try to upload events before shutdown
 			time.Sleep(3 * time.Minute)
+			sendingHeartBeats = false
 		} else {
 			minutesUntilActive := int(conf.OnWindow.Until().Minutes())
 			log.Printf("minutes until active %d", minutesUntilActive)
@@ -199,6 +200,9 @@ func runMain() error {
 						log.Fatal(err)
 					}
 				}
+			} else if !sendingHeartBeats {
+				sendingHeartBeats = true
+				go heartBeatLoop(conf.OnWindow)
 			}
 			time.Sleep(time.Minute * 5)
 		}
