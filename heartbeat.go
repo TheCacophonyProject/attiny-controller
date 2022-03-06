@@ -126,21 +126,21 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 
 	apiClient, err := api.New()
 	if err != nil {
-		log.Printf("Error connecting to api %v", apiClient)
+		log.Printf("Error connecting to api, api client is %v", apiClient)
 		return err
 	}
 	attempt := 0
 	for {
 		_, err = apiClient.Heartbeat(nextBeat)
-		log.Printf("Sent heart, valid until %v", nextBeat)
 		if err == nil {
+			log.Printf("Sent heart, valid until %v", nextBeat)
 			return nil
 		}
 		attempt += 1
 		if attempt > attempts {
 			break
 		}
-		log.Printf("Error sending heart beat sleeping, trying again: %v", err)
+		log.Printf("Error sending heart beat sleeping, trying again in %v: %v", attemptDelay, err)
 		clock.Sleep(attemptDelay)
 	}
 	return err
