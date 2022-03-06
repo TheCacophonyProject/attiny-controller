@@ -16,7 +16,7 @@ const (
 
 	connTimeout       = time.Minute * 2
 	connRetryInterval = time.Minute * 1
-	connMaxRetries    = 1
+	connMaxRetries    = 3
 )
 
 type Heartbeat struct {
