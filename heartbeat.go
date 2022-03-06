@@ -126,7 +126,7 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 
 	apiClient, err := api.New()
 	if err != nil {
-		log.Printf("Error connecting to api, api client is %v", apiClient)
+		log.Printf("Error connecting to api %v", err)
 		return err
 	}
 	attempt := 0
