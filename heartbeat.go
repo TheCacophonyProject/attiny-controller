@@ -59,13 +59,13 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 			initialDelay = until
 		}
 	}
-	log.Printf("Sending initial heart beat in %v", initialDelay)
+	log.Printf("Sending initial heartbeat in %v", initialDelay)
 	clock.Sleep(initialDelay)
 	for {
 		done := hb.updateNextBeat()
 		err := sendHeartbeat(hb.validUntil, hb.MaxAttempts)
 		if err != nil {
-			log.Printf("Error sending heart beat, skipping this beat %v", err)
+			log.Printf("Error sending heartbeat, skipping this beat %v", err)
 		}
 		if done {
 			log.Printf("Sent penultimate heartbeat")
@@ -133,14 +133,14 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 	for {
 		_, err = apiClient.Heartbeat(nextBeat)
 		if err == nil {
-			log.Printf("Sent heart, valid until %v", nextBeat)
+			log.Printf("Sent heartbeat, valid until %v", nextBeat)
 			return nil
 		}
 		attempt += 1
 		if attempt > attempts {
 			break
 		}
-		log.Printf("Error sending heart beat sleeping, trying again in %v: %v", attemptDelay, err)
+		log.Printf("Error sending heartbeat sleeping, trying again in %v: %v", attemptDelay, err)
 		clock.Sleep(attemptDelay)
 	}
 	return err
