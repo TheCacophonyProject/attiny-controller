@@ -16,7 +16,7 @@ const (
 
 	connTimeout       = time.Minute * 2
 	connRetryInterval = time.Minute * 1
-	connMaxRetries    = 1
+	connMaxRetries    = 3
 )
 
 type Heartbeat struct {
@@ -59,13 +59,13 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 			initialDelay = until
 		}
 	}
-	log.Printf("Sending initial heart beat in %v", initialDelay)
+	log.Printf("Sending initial heartbeat in %v", initialDelay)
 	clock.Sleep(initialDelay)
 	for {
 		done := hb.updateNextBeat()
 		err := sendHeartbeat(hb.validUntil, hb.MaxAttempts)
 		if err != nil {
-			log.Printf("Error sending heart beat, skipping this beat %v", err)
+			log.Printf("Error sending heartbeat, skipping this beat %v", err)
 		}
 		if done {
 			log.Printf("Sent penultimate heartbeat")
@@ -126,21 +126,21 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 
 	apiClient, err := api.New()
 	if err != nil {
-		log.Printf("Error connecting to api %v", apiClient)
+		log.Printf("Error connecting to api %v", err)
 		return err
 	}
 	attempt := 0
 	for {
 		_, err = apiClient.Heartbeat(nextBeat)
-		log.Printf("Sent heart, valid until %v", nextBeat)
 		if err == nil {
+			log.Printf("Sent heartbeat, valid until %v", nextBeat)
 			return nil
 		}
 		attempt += 1
 		if attempt > attempts {
 			break
 		}
-		log.Printf("Error sending heart beat sleeping, trying again: %v", err)
+		log.Printf("Error sending heartbeat %v, trying again in %v", err, attemptDelay)
 		clock.Sleep(attemptDelay)
 	}
 	return err
