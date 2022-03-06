@@ -140,7 +140,7 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 		if attempt > attempts {
 			break
 		}
-		log.Printf("Error sending heartbeat sleeping, trying again in %v: %v", attemptDelay, err)
+		log.Printf("Error sending heartbeat %v, trying again in %v", err, attemptDelay)
 		clock.Sleep(attemptDelay)
 	}
 	return err
