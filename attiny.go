@@ -37,7 +37,8 @@ import (
 const (
 	wantedVersion = 4
 
-	attinyAddress = 0x04
+	attinyAddress            = 0x04
+	attinyAddressAlternative = 0x24
 
 	watchdogReg         = 0x12
 	sleepReg            = 0x11
@@ -72,9 +73,11 @@ func connectATtiny(battery config.Battery) (*attiny, error) {
 	if err != nil {
 		return nil, err
 	}
-	dev := &i2c.Dev{Bus: bus, Addr: attinyAddress}
+	dev1 := &i2c.Dev{Bus: bus, Addr: attinyAddress}
+	dev2 := &i2c.Dev{Bus: bus, Addr: attinyAddressAlternative}
 
-	if !detectATtiny(dev) {
+	dev := detectATtiny(dev1, dev2)
+	if dev == nil {
 		bus.Close()
 		return nil, nil
 	}
@@ -91,18 +94,22 @@ func connectATtiny(battery config.Battery) (*attiny, error) {
 	return a, nil
 }
 
-func detectATtiny(dev *i2c.Dev) bool {
+func detectATtiny(dev *i2c.Dev, dev2 *i2c.Dev) *i2c.Dev {
 	attempts := 0
 	for {
 		b := make([]byte, 1)
 		err := dev.Tx(nil, b)
 		if err == nil && b[0] == magicReturn {
-			return true
+			return dev
+		}
+		err = dev2.Tx(nil, b)
+		if err == nil && b[0] == magicReturn {
+			return dev2
 		}
 
 		attempts++
 		if attempts >= maxConnectAttempts {
-			return false
+			return nil
 		}
 
 		time.Sleep(connectAttemptInterval)
