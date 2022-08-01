@@ -165,6 +165,11 @@ func runMain() error {
 
 	for {
 		if conf.OnWindow.Active() {
+			if !sendingHeartBeats {
+				// means pi hasnt reboot and we need to start a new heartbeat loop
+				sendingHeartBeats = true
+				go heartBeatLoop(conf.OnWindow)
+			}
 			untilEnd := conf.OnWindow.UntilEnd()
 			log.Printf("%s until on window ends", untilEnd)
 			log.Println("sleeping until end of window")
@@ -200,10 +205,6 @@ func runMain() error {
 						log.Fatal(err)
 					}
 				}
-			}
-			if !sendingHeartBeats {
-				sendingHeartBeats = true
-				go heartBeatLoop(conf.OnWindow)
 			}
 			time.Sleep(time.Minute * 5)
 		}

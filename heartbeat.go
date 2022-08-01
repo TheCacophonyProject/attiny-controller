@@ -147,5 +147,6 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 }
 
 func sendFinalHeartBeat(window *window.Window) error {
+	log.Printf("Sending final heart beat")
 	return sendHeartbeat(window.NextStart().Add(heartBeatDelay*2), 3)
 }
