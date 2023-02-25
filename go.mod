@@ -12,7 +12,7 @@ require (
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b
 	github.com/godbus/dbus v4.1.0+incompatible
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1
+	golang.org/x/sys v0.1.0
 	periph.io/x/periph v3.6.8+incompatible
 )
 
