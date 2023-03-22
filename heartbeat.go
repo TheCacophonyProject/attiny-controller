@@ -123,15 +123,27 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 		log.Println("unable to get an internet connection. Not reporting events")
 		return err
 	}
-
-	apiClient, err := api.New()
-	if err != nil {
-		log.Printf("Error connecting to api %v", err)
-		return err
-	}
+	var apiClient *api.CacophonyAPI
+	var err error
 	attempt := 0
 	for {
-		_, err = apiClient.Heartbeat(nextBeat)
+		apiClient, err = api.New()
+		if err != nil {
+			attempt +=1
+			if attempt < attempts{
+				log.Printf("Error connecting to api %v trying again in %v", err, attemptDelay)
+				clock.Sleep(attemptDelay)
+				continue
+			}
+			log.Printf("Error connecting to api %v", err)
+			return err
+		}
+		break
+	}
+
+	attempt = 0
+	for {
+		_, err := apiClient.Heartbeat(nextBeat)
 		if err == nil {
 			log.Printf("Sent heartbeat, valid until %v", nextBeat)
 			return nil
