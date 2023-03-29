@@ -19,12 +19,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,26 +40,64 @@ import (
 // How long to wait before checking the recording window. This
 // gives time to do something with the device before it turns off.
 const (
-	initialGracePeriod     = 20 * time.Minute
-	batteryCSVFile         = "/var/log/battery.csv"
-	batteryReadingInterval = 10 * time.Minute
-	systemStatFile         = "/proc/stat"
+	initialGracePeriod      = 20 * time.Minute
+	batteryCSVFile          = "/var/log/battery.csv"
+	batteryReadingInterval  = 10 * time.Minute
+	systemStatFile          = "/proc/stat"
+	saltCommandWaitDuration = 30 * time.Minute
 )
 
 var (
 	version = "<not set>"
 
-	mu          sync.Mutex
-	stayOnUntil = time.Now()
+	mu                 sync.Mutex
+	stayOnUntil        = time.Now()
+	saltCommandWaitEnd = time.Time{}
 )
 
 func shouldTurnOff(minutesUntilActive int) bool {
 	mu.Lock()
 	defer mu.Unlock()
+	turnOff := true
 	if time.Now().Before(stayOnUntil) {
+		turnOff = false
+	} else if minutesUntilActive < 15 {
+		turnOff = false
+	}
+	if !turnOff {
+		saltCommandWaitEnd = time.Time{} // Not waiting for salt command
 		return false
 	}
-	return minutesUntilActive > 15
+	return !shouldStayOnForSalt()
+}
+
+// shouldStayOnForSalt will check if a salt command is running via checking the output from `salt-call saltutil.running`
+// If a device is being kept on for too long because of salt commands it will ignore the salt command check.
+func shouldStayOnForSalt() bool {
+	if saltCommandWaitEnd.IsZero() {
+		saltCommandWaitEnd = time.Now().Add(saltCommandWaitDuration)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	stdout, err := exec.CommandContext(ctx, "salt-call", "--local", "saltutil.running").Output()
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	strOut := string(stdout)
+	if strings.Count(strOut, "\n") <= 2 { // If a salt command is running the output will have much more than 2 lines.
+		return false
+	}
+
+	if time.Now().After(saltCommandWaitEnd) {
+		log.Printf("waiting for salt command for too long (%v)", saltCommandWaitDuration)
+		log.Printf("salt command:\n%v", strOut)
+		return false
+	}
+	log.Println("staying on for salt command to finish")
+	return true
 }
 
 func setStayOnUntil(newTime time.Time) error {
@@ -206,7 +246,7 @@ func runMain() error {
 					}
 				}
 			}
-			time.Sleep(time.Minute * 5)
+			time.Sleep(time.Minute)
 		}
 	}
 }
