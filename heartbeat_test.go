@@ -43,6 +43,24 @@ func (h *TestClock) Sleep(d time.Duration) {
 func (h *TestClock) Now() time.Time {
 	return h.now
 }
+func (h *TestClock) After(d time.Duration) <-chan time.Time {
+	// nextBeat gets updated after sleep skip first
+	if h.sleepCount > 0 {
+		if h.sleepCount == len(h.expectedSleeps)-1 {
+			// penultimate event is only valid for 5 minutes after sleep
+			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(5*time.Minute).Format(dateFormat), h.hb.validUntil.Format(dateFormat))
+
+		} else {
+			assert.Equal(h.t, h.expectedSleeps[h.sleepCount].Add(1*time.Hour).Format(dateFormat), h.hb.validUntil.Format(dateFormat))
+		}
+	}
+	h.now = h.now.Add(d)
+	assert.Equal(h.t, h.now.Format(dateFormat), h.expectedSleeps[h.sleepCount].Format(dateFormat))
+	h.sleepCount += 1
+	s := make(chan time.Time, 10)
+	s <- h.now
+	return s
+}
 
 func TestSmallWindow(t *testing.T) {
 	clock := &TestClock{now: time.Now(), t: t}

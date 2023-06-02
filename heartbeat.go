@@ -6,6 +6,7 @@ import (
 
 	api "github.com/TheCacophonyProject/go-api"
 	"github.com/TheCacophonyProject/modemd/connrequester"
+	"github.com/TheCacophonyProject/modemd/modemlistener"
 	"github.com/TheCacophonyProject/window"
 )
 
@@ -32,6 +33,7 @@ type Heartbeat struct {
 type Clock interface {
 	Sleep(d time.Duration)
 	Now() time.Time
+	After(d time.Duration) <-chan time.Time
 }
 
 type HeartBeatClock struct {
@@ -44,6 +46,10 @@ func (h *HeartBeatClock) Now() time.Time {
 	return time.Now()
 }
 
+func (h *HeartBeatClock) After(d time.Duration) <-chan time.Time {
+	return time.After(d)
+}
+
 var clock Clock = &HeartBeatClock{}
 
 func heartBeatLoop(window *window.Window) {
@@ -51,6 +57,10 @@ func heartBeatLoop(window *window.Window) {
 	sendBeats(hb, window)
 }
 func sendBeats(hb *Heartbeat, window *window.Window) {
+	modemConnectSignal, err := modemlistener.GetModemConnectedSignalListener()
+	if err != nil {
+		log.Println("Failed to get modem connected signal listener")
+	}
 	initialDelay := heartBeatDelay
 
 	if !window.Active() {
@@ -81,7 +91,11 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 
 		}
 		log.Printf("Heartbeat sleeping until %v", clock.Now().Add(nextEventIn))
-		clock.Sleep(nextEventIn)
+		select {
+		case <-modemConnectSignal:
+			log.Println("Modem connected")
+		case <-clock.After(nextEventIn):
+		}
 	}
 }
 
@@ -129,8 +143,8 @@ func sendHeartbeat(nextBeat time.Time, attempts int) error {
 	for {
 		apiClient, err = api.New()
 		if err != nil {
-			attempt +=1
-			if attempt < attempts{
+			attempt += 1
+			if attempt < attempts {
 				log.Printf("Error connecting to api %v trying again in %v", err, attemptDelay)
 				clock.Sleep(attemptDelay)
 				continue
