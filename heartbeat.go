@@ -91,10 +91,22 @@ func sendBeats(hb *Heartbeat, window *window.Window) {
 
 		}
 		log.Printf("Heartbeat sleeping until %v", clock.Now().Add(nextEventIn))
+		// Empty modemConnectSignal channel so as to not trigger from old signals
+		emptyChannel(modemConnectSignal)
 		select {
 		case <-modemConnectSignal:
 			log.Println("Modem connected")
 		case <-clock.After(nextEventIn):
+		}
+	}
+}
+
+func emptyChannel(ch chan time.Time) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
 		}
 	}
 }
