@@ -390,7 +390,6 @@ github.com/Masterminds/glide v0.13.2/go.mod h1:STyF5vcenH/rUqTEv+/hBXlSTo7KYwg2o
 github.com/Masterminds/semver v1.4.2/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/vcs v1.13.0/go.mod h1:N09YCmOQr6RLxC6UNHzuVwAdodYbbnycGHSmwVJjcKA=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/TheCacophonyProject/event-reporter/v3 v3.2.1/go.mod h1:0ejh8kTFM9iC3/Q+etu7Hf4XivPu35PDH5oQ1XY3KNU=
 github.com/TheCacophonyProject/event-reporter/v3 v3.3.0/go.mod h1:dGIYfhABsJHKjcsxtftDwpdcfLOWTYKeIyCYxCOIMrc=
 github.com/TheCacophonyProject/event-reporter/v3 v3.4.0 h1:YP/kc6LKXiQQI9PBljgTbQza+4goTLH4d5AWFgbHg3w=
 github.com/TheCacophonyProject/event-reporter/v3 v3.4.0/go.mod h1:YO1uAL+CyMctDa2yO0tPpNI43BShcyaMyH2CmJCvLCc=
@@ -413,11 +412,10 @@ github.com/TheCacophonyProject/lepton3 v0.0.0-20210324024142-003e5546e30f/go.mod
 github.com/TheCacophonyProject/lepton3 v0.0.0-20211005194419-22311c15d6ee h1:whilFI36xLtsd7p6blNKH3LKdU/g1gZv1SClUPJrpgs=
 github.com/TheCacophonyProject/lepton3 v0.0.0-20211005194419-22311c15d6ee/go.mod h1:+FTQKx63hdEbuTe/nxNv9TQ2EWqdlzMZx7UNLGCX9SE=
 github.com/TheCacophonyProject/modemd v0.0.0-20190605010435-ae5b0f2eb760/go.mod h1:bfwJ/WcvDY9XtHKC5tcRfVrU8RWaW8DLYAAUfsrJr/4=
-github.com/TheCacophonyProject/modemd v1.4.0 h1:VNDwSeue8N2DQlLW/86GVvMsLbUgJkZoxkjvFq8dttU=
-github.com/TheCacophonyProject/modemd v1.4.0/go.mod h1:IikYm8K/nOtqArmqjBbcH5WON4bBv3YicDH7I0D7ByY=
+github.com/TheCacophonyProject/modemd v1.5.1 h1:xvsUqKeD/opHd95Votybn/zhrZ/zCwYQrI9/xYm/MUY=
+github.com/TheCacophonyProject/modemd v1.5.1/go.mod h1:zmwP2DewAQPOwKUaZ02T53YcOeq14t6RL1o8yIeGqBo=
 github.com/TheCacophonyProject/periph v2.1.1-0.20200615222341-6834cd5be8c1+incompatible h1:0pEn1FoMTgOZR3EkqOTiqd0++jOS/jWlGrbvOHK0/KM=
 github.com/TheCacophonyProject/periph v2.1.1-0.20200615222341-6834cd5be8c1+incompatible/go.mod h1:K1wa07sGXKzV0G9p+4R069mZk4GOpqKW8GU6/k+BrIo=
-github.com/TheCacophonyProject/salt-updater v0.4.0/go.mod h1:fVlMqJZpvT8HeT4GcmQlvMq8+AtvF4NZ/LuEVSoA5E8=
 github.com/TheCacophonyProject/window v0.0.0-20190821235241-ab92c2ee24b6/go.mod h1:Vww417iimOb0s46Ndsm8U/vYtwc0dZUet4uW8QzBo4M=
 github.com/TheCacophonyProject/window v0.0.0-20200312071457-7fc8799fdce7 h1:JlTPDD6dwFU/OZfD/E2a2ByA4jgzzBhM0QMwwuYrjLg=
 github.com/TheCacophonyProject/window v0.0.0-20200312071457-7fc8799fdce7/go.mod h1:6FLliyNjkbVlhGVA51M83YM0U+DgJl29QMtKDjA93pQ=
@@ -428,7 +426,6 @@ github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
 github.com/alexflint/go-arg v0.0.0-20180516182405-f7c0423bd11e/go.mod h1:PHxo6ZWOLVMZZgWSAqBynb/KhIqoGO6WKwOVX7rM9dg=
 github.com/alexflint/go-arg v1.1.0/go.mod h1:3Rj4baqzWaGGmZA2+bVTV8zQOZEjBQAPBnL5xLT+ftY=
-github.com/alexflint/go-arg v1.3.0/go.mod h1:9iRbDxne7LcR/GSvEr7ma++GLpdIU1zrghf2y2768kM=
 github.com/alexflint/go-arg v1.4.2/go.mod h1:9iRbDxne7LcR/GSvEr7ma++GLpdIU1zrghf2y2768kM=
 github.com/alexflint/go-arg v1.4.3 h1:9rwwEBpMXfKQKceuZfYcwuc/7YY7tWJbFsgG5cAU/uo=
 github.com/alexflint/go-arg v1.4.3/go.mod h1:3PZ/wp/8HuqRZMUUgu7I+e1qcpUbvmS258mRXkFH4IA=
@@ -1040,7 +1037,6 @@ golang.org/x/sys v0.0.0-20181116152217-5ac8a444bdc5/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190312061237-fead79001313/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20190318195719-6c81ef8f67ca/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190422165155-953cdadca894/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190502145724-3ef323f4f1fd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

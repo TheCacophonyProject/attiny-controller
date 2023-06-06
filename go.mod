@@ -6,7 +6,7 @@ require (
 	github.com/TheCacophonyProject/event-reporter/v3 v3.4.0
 	github.com/TheCacophonyProject/go-api v1.0.2
 	github.com/TheCacophonyProject/go-config v1.8.3
-	github.com/TheCacophonyProject/modemd v1.4.0
+	github.com/TheCacophonyProject/modemd v1.5.1
 	github.com/TheCacophonyProject/window v0.0.0-20200312071457-7fc8799fdce7
 	github.com/alexflint/go-arg v1.4.3
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b
